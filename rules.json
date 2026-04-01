@@ -9,6 +9,11 @@
       "m": "contains",
       "v": "geilo sport",
       "cat": "Shopping"
+    },
+    {
+      "m": "contains",
+      "v": "follum kantine",
+      "cat": "Jobblunch"
     }
   ],
   "categories": [
