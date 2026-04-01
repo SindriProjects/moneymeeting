@@ -1,0 +1,33 @@
+{
+  "rules": [
+    {
+      "m": "contains",
+      "v": "yx sokna 0813",
+      "cat": "Transport"
+    }
+  ],
+  "categories": [
+    "Groceries",
+    "Transport",
+    "Housing",
+    "Childcare",
+    "Cleaning",
+    "Subscriptions",
+    "Wolt",
+    "Bakeries",
+    "Restaurants",
+    "Health & wellbeing",
+    "Shopping",
+    "Travel",
+    "Entertainment",
+    "Flowers",
+    "Gifts",
+    "Professional fees",
+    "Education",
+    "Insurance",
+    "Tax",
+    "Books",
+    "Kiosk",
+    "Misc"
+  ]
+}
