@@ -19,6 +19,11 @@
       "m": "contains",
       "v": "apotek 1 norge",
       "cat": "Health & wellbeing"
+    },
+    {
+      "m": "contains",
+      "v": "statens lånekasse for",
+      "cat": "Housing"
     }
   ],
   "categories": [
