@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Household Finance Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: #e2e0d8;
+    --border2: #d0cec4;
+    --text: #1a1916;
+    --text2: #6b6860;
+    --text3: #9e9b94;
+    --green: #1a7a4a;
+    --green-bg: #eaf4ee;
+    --green-border: #b6dfc6;
+    --red: #c0392b;
+    --red-bg: #fdf0ee;
+    --red-border: #f0b8b2;
+    --amber: #8a5c00;
+    --amber-bg: #fdf6e3;
+    --amber-border: #f0d898;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; font-size: 14px; background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; }
+
+  /* ── Layout ── */
+  .shell { max-width: 900px; margin: 0 auto; padding: 48px 24px 80px; }
+  .header { margin-bottom: 40px; }
+  .logo { font-size: 22px; font-weight: 500; letter-spacing: -0.5px; color: var(--text); margin-bottom: 4px; }
+  .logo span { color: var(--text3); font-weight: 300; }
+  .header-sub { font-size: 13px; color: var(--text3); }
+
+  /* ── GitHub setup banner ── */
+  .setup-banner {
+    background: var(--amber-bg); border: 1px solid var(--amber-border);
+    border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 24px;
+  }
+  .setup-banner-title { font-size: 13px; font-weight: 500; color: var(--amber); margin-bottom: 10px; }
+  .setup-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .setup-input {
+    font-family: 'DM Mono', monospace; font-size: 12px;
+    padding: 7px 10px; border-radius: 6px;
+    border: 1px solid var(--amber-border); background: var(--surface);
+    color: var(--text); flex: 1; min-width: 200px;
+  }
+  .setup-btn {
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+    padding: 7px 16px; border-radius: 6px;
+    border: none; background: var(--amber); color: #fff;
+    cursor: pointer; white-space: nowrap;
+  }
+  .setup-btn:hover { opacity: 0.85; }
+  .setup-status { font-size: 12px; color: var(--text2); margin-top: 8px; }
+
+  /* ── Upload ── */
+  .upload-zone {
+    border: 1.5px dashed var(--border2); border-radius: var(--radius-lg);
+    padding: 36px 24px; text-align: center; cursor: pointer;
+    transition: background 0.15s, border-color 0.15s; background: var(--surface);
+  }
+  .upload-zone:hover, .upload-zone.dragover { background: var(--surface2); border-color: var(--text3); }
+  .upload-zone input { display: none; }
+  .upload-icon { font-size: 28px; margin-bottom: 10px; opacity: 0.4; }
+  .upload-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+  .upload-sub { font-size: 13px; color: var(--text3); }
+  .file-badge {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 999px; padding: 6px 14px; font-size: 13px; margin-top: 14px;
+  }
+  .file-badge .rm { cursor: pointer; color: var(--text3); font-size: 16px; line-height: 1; }
+  .file-badge .rm:hover { color: var(--red); }
+  .btn-run {
+    margin-top: 12px; width: 100%; padding: 12px;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+    border-radius: var(--radius); border: 1.5px solid var(--text);
+    background: var(--text); color: #fff; cursor: pointer; transition: opacity 0.15s;
+  }
+  .btn-run:hover:not(:disabled) { opacity: 0.85; }
+  .btn-run:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ── Top action bar ── */
+  .action-bar {
+    display: flex; gap: 10px; margin-bottom: 28px; flex-wrap: wrap; align-items: center;
+  }
+  .action-bar-left { flex: 1; }
+  .period-label {
+    display: inline-block; font-size: 12px; font-family: 'DM Mono', monospace;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 999px; padding: 4px 14px; color: var(--text2); letter-spacing: 0.3px;
+  }
+  .btn-report {
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+    padding: 8px 18px; border-radius: var(--radius);
+    border: 1.5px solid var(--text); background: var(--text); color: #fff;
+    cursor: pointer; transition: opacity 0.15s; white-space: nowrap;
+  }
+  .btn-report:hover { opacity: 0.85; }
+  .btn-secondary {
+    font-family: 'DM Sans', sans-serif; font-size: 13px;
+    padding: 8px 16px; border-radius: var(--radius);
+    border: 1px solid var(--border2); background: var(--surface);
+    color: var(--text2); cursor: pointer; transition: background 0.1s; white-space: nowrap;
+  }
+  .btn-secondary:hover { background: var(--surface2); color: var(--text); }
+
+  /* ── Metrics ── */
+  .metrics { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-bottom: 32px; }
+  .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; }
+  .metric-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text3); margin-bottom: 6px; font-weight: 500; }
+  .metric-value { font-size: 22px; font-weight: 500; letter-spacing: -0.5px; }
+  .metric-value.pos { color: var(--green); }
+  .metric-value.neg { color: var(--red); }
+
+  /* ── Sections ── */
+  .section { margin-bottom: 32px; }
+  .section-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
+    font-weight: 500; color: var(--text3); margin-bottom: 12px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px;
+  }
+  .section-title .hint { font-size: 11px; text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+  /* ── Tables ── */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); background: var(--surface2); }
+  td { padding: 10px 16px; border-bottom: 1px solid var(--border); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  .tr { text-align: right; }
+  .muted { color: var(--text2); }
+  .bold { font-weight: 500; }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+
+  /* ── Clickable rows ── */
+  .clickable-row { cursor: pointer; transition: background 0.1s; }
+  .clickable-row:hover { background: var(--surface2); }
+  .clickable-row td:first-child { position: relative; padding-left: 32px; }
+  .clickable-row td:first-child::before { content: '▶'; font-size: 8px; color: var(--text3); position: absolute; left: 14px; top: 50%; transform: translateY(-50%); transition: transform 0.15s; }
+  .clickable-row.open td:first-child::before { transform: translateY(-50%) rotate(90deg); }
+  .drill-row td { padding: 0; border-bottom: none; }
+  .drill-inner { background: #fafaf7; border-top: 1px solid var(--border); }
+  .drill-inner table { font-size: 12px; }
+  .drill-tx-row td { padding: 8px 16px 8px 32px; border-bottom: 1px solid var(--border); color: var(--text2); }
+  .drill-tx-row:last-child td { border-bottom: none; }
+  .drill-tx-row .dc { min-width: 95px; white-space: nowrap; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3); }
+  .drill-tx-row .ac { text-align: right; color: var(--text); font-weight: 500; font-family: 'DM Mono', monospace; white-space: nowrap; min-width: 90px; }
+  .drill-tx-row .rc { white-space: nowrap; padding-right: 12px; }
+  .reclass-sel { font-family: 'DM Sans', sans-serif; font-size: 11px; padding: 3px 6px; border-radius: 4px; border: 1px solid var(--border2); background: var(--surface); color: var(--text); }
+  .reclass-btn { font-family: 'DM Sans', sans-serif; font-size: 11px; padding: 3px 9px; border-radius: 4px; border: 1px solid var(--border2); background: var(--surface); color: var(--text); cursor: pointer; margin-left: 4px; }
+  .reclass-btn:hover { background: var(--surface2); }
+  .reclass-btn.omit { color: var(--red); border-color: var(--red-border); }
+  .reclass-btn.omit:hover { background: var(--red-bg); }
+
+  /* ── Pills ── */
+  .pill { display: inline-block; font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 999px; margin-left: 8px; vertical-align: middle; letter-spacing: 0.3px; text-transform: uppercase; }
+  .pill-red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+  .pill-amb { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+
+  /* ── Transfer cards ── */
+  .transfers-list { display: flex; flex-direction: column; gap: 8px; }
+  .transfer-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .transfer-info { flex: 1; min-width: 0; }
+  .transfer-desc { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .transfer-meta { font-size: 11px; color: var(--text3); margin-top: 2px; font-family: 'DM Mono', monospace; }
+  .transfer-amount { font-size: 13px; font-weight: 500; font-family: 'DM Mono', monospace; white-space: nowrap; }
+  .transfer-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tbtn { font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border2); background: var(--surface); color: var(--text2); cursor: pointer; transition: all 0.1s; white-space: nowrap; }
+  .tbtn:hover { background: var(--surface2); color: var(--text); }
+  .tbtn.active-salary { background: var(--green-bg); color: var(--green); border-color: var(--green-border); font-weight: 500; }
+  .tbtn.active-excluded { background: var(--surface2); color: var(--text); font-weight: 500; }
+  .tbtn.active-other { background: var(--red-bg); color: var(--red); border-color: var(--red-border); font-weight: 500; }
+  .ts { font-size: 10px; font-weight: 500; padding: 3px 9px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.3px; }
+  .ts-in { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .ts-ex { background: var(--surface2); color: var(--text3); border: 1px solid var(--border); }
+  .ts-ot { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+  .transfer-summary { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 16px; font-size: 12px; color: var(--text2); display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 12px; }
+
+  /* ── Misc cards ── */
+  .misc-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; }
+  .misc-desc { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .misc-meta { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-bottom: 12px; }
+  .misc-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .misc-actions select { font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border2); background: var(--surface); color: var(--text); flex: 1; min-width: 160px; }
+  .mbtn { font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 6px 13px; border-radius: 6px; border: 1px solid var(--border2); background: var(--surface); color: var(--text2); cursor: pointer; white-space: nowrap; transition: all 0.1s; }
+  .mbtn:hover { background: var(--surface2); color: var(--text); }
+  .mbtn.primary { background: var(--text); color: #fff; border-color: var(--text); font-weight: 500; }
+  .mbtn.primary:hover { opacity: 0.85; }
+  .mbtn.danger { border-color: var(--red-border); color: var(--red); }
+  .mbtn.danger:hover { background: var(--red-bg); }
+  .misc-all-done { background: var(--green-bg); border: 1px solid var(--green-border); border-radius: var(--radius); padding: 14px 16px; font-size: 13px; color: var(--green); text-align: center; font-weight: 500; }
+
+  /* ── Category manager ── */
+  .cat-manager { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .cat-row { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .cat-row:last-child { border-bottom: none; }
+  .cat-name { flex: 1; }
+  .cat-del { font-family: 'DM Sans', sans-serif; font-size: 11px; padding: 3px 9px; border-radius: 4px; border: 1px solid var(--red-border); color: var(--red); background: transparent; cursor: pointer; }
+  .cat-del:hover { background: var(--red-bg); }
+  .cat-add-row { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); background: var(--surface2); }
+  .cat-add-input { font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border2); background: var(--surface); color: var(--text); flex: 1; }
+  .cat-add-btn { font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 7px 16px; border-radius: 6px; border: 1px solid var(--border2); background: var(--surface); color: var(--text); cursor: pointer; font-weight: 500; white-space: nowrap; }
+  .cat-add-btn:hover { background: var(--text); color: #fff; border-color: var(--text); }
+
+  /* ── Rules panel ── */
+  .rules-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .rule-row { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .rule-row:last-child { border-bottom: none; }
+  .rule-kw { flex: 1; font-family: 'DM Mono', monospace; font-size: 12px; }
+  .rule-cat { color: var(--text2); font-size: 12px; min-width: 160px; }
+  .rule-del { font-family: 'DM Sans', sans-serif; font-size: 11px; padding: 3px 9px; border-radius: 4px; border: 1px solid var(--red-border); color: var(--red); background: transparent; cursor: pointer; }
+  .rule-del:hover { background: var(--red-bg); }
+  .no-rules { padding: 16px; font-size: 13px; color: var(--text3); }
+
+  /* ── Sync status ── */
+  .sync-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text3); margin-top: 8px; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+  .sync-dot.ok { background: var(--green); }
+  .sync-dot.err { background: var(--red); }
+  .sync-dot.loading { background: var(--amber); }
+
+  /* ── Notes ── */
+  .notes-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 18px; font-size: 13px; color: var(--text2); line-height: 1.9; }
+  .err { background: var(--red-bg); border: 1px solid var(--red-border); border-radius: var(--radius); padding: 12px 16px; color: var(--red); font-size: 13px; margin-top: 12px; }
+
+  /* ── Toast ── */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--text); color: #fff; font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 10px 16px; border-radius: var(--radius); display: none; align-items: center; gap: 14px; z-index: 9999; white-space: nowrap; }
+  .toast-undo { font-size: 12px; padding: 4px 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.35); background: transparent; color: #fff; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+  .toast-undo:hover { background: rgba(255,255,255,0.15); }
+
+  /* ── Print / Report ── */
+  @media print {
+    body { background: white; font-size: 12px; }
+    .shell { padding: 0; max-width: 100%; }
+    .no-print { display: none !important; }
+    .print-only { display: block !important; }
+    .report-header { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #1a1916; }
+    .report-title { font-size: 20px; font-weight: 500; }
+    .report-period { font-size: 13px; color: #6b6860; margin-top: 4px; }
+    .metrics { break-inside: avoid; }
+    .metric { border: 1px solid #e2e0d8; }
+    .section { break-inside: avoid; }
+    .table-wrap { break-inside: avoid; }
+    .clickable-row td:first-child::before { display: none; }
+    .clickable-row td:first-child { padding-left: 16px; }
+    .drill-row { display: none !important; }
+    .transfer-card { break-inside: avoid; }
+    .misc-card { break-inside: avoid; }
+    .upload-zone, .btn-run, .action-bar, .setup-banner, .transfer-actions, .misc-actions, .reclass-btn, .reclass-sel, .cat-add-row, .cat-del, .rule-del, .rules-section, .cat-section { display: none !important; }
+    .misc-card .misc-actions { display: none; }
+    .drill-inner { display: none; }
+    .tbtn { display: none; }
+  }
+  .print-only { display: none; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="header no-print">
+    <div class="logo">Finance <span>/ Analyzer</span></div>
+    <div class="header-sub">Upload your monthly bank export · Rules sync via GitHub</div>
+  </div>
+
+  <!-- GitHub token setup -->
+  <div class="setup-banner no-print" id="setupBanner">
+    <div class="setup-banner-title">GitHub sync — enter your Personal Access Token to save rules</div>
+    <div class="setup-row">
+      <input type="password" class="setup-input" id="tokenInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+      <button class="setup-btn" onclick="saveToken()">Save token</button>
+    </div>
+    <div class="setup-status" id="setupStatus">
+      Token stored in localStorage · <a href="https://github.com/settings/tokens/new?scopes=repo&description=finance-analyzer" target="_blank" style="color:var(--amber)">Generate token on GitHub</a> (needs repo scope)
+    </div>
+    <div class="sync-row" id="syncStatus"><div class="sync-dot" id="syncDot"></div><span id="syncMsg">Not connected</span></div>
+  </div>
+
+  <!-- Upload -->
+  <div class="upload-zone no-print" id="dz">
+    <input type="file" id="fi" accept=".csv">
+    <div class="upload-icon">↑</div>
+    <div class="upload-title">Upload bank transaction export</div>
+    <div class="upload-sub">Semicolon-separated CSV · Norwegian bank format</div>
+    <div id="badge"></div>
+  </div>
+  <button class="btn-run no-print" id="runBtn" disabled>Run analysis</button>
+  <div id="err"></div>
+  <div class="report" id="report"></div>
+
+</div>
+
+<div class="toast" id="toast">
+  <span id="toastMsg"></span>
+  <button class="toast-undo" onclick="doUndo()">Undo</button>
+</div>
+
+<script>
+// ── Config ──────────────────────────────────────────────────────────────
+const GH_OWNER = 'eriklangaardsolberg-svg';
+const GH_REPO  = 'moneymeeting';
+const GH_FILE  = 'rules.json';
+const GH_API   = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_FILE}`;
+
+// ── State ────────────────────────────────────────────────────────────────
+let CUSTOM_RULES = [];
+let CATEGORIES = ['Groceries','Transport','Housing','Childcare','Cleaning','Subscriptions','Wolt','Bakeries','Restaurants','Health & wellbeing','Shopping','Travel','Entertainment','Flowers','Gifts','Professional fees','Education','Insurance','Tax','Books','Kiosk','Misc'];
+let ghToken = localStorage.getItem('hf_gh_token') || '';
+let rulesFileSha = null;
+let csvText = null, lastReport = null, transferState = {}, txOverrides = {}, undoStack = [], toastTimer = null;
+
+// ── GitHub sync ───────────────────────────────────────────────────────────
+function setSyncStatus(state, msg) {
+  const dot = document.getElementById('syncDot');
+  const msgEl = document.getElementById('syncMsg');
+  if (!dot) return;
+  dot.className = 'sync-dot ' + (state === 'ok' ? 'ok' : state === 'err' ? 'err' : 'loading');
+  msgEl.textContent = msg;
+}
+
+async function loadRulesFromGitHub() {
+  if (!ghToken) { setSyncStatus('', 'No token — rules not synced'); return; }
+  setSyncStatus('loading', 'Loading rules from GitHub…');
+  try {
+    const res = await fetch(GH_API, { headers: { Authorization: `token ${ghToken}`, Accept: 'application/vnd.github.v3+json' }});
+    if (res.status === 404) {
+      setSyncStatus('ok', 'No rules file yet — will create on first save');
+      return;
+    }
+    if (!res.ok) throw new Error(`GitHub error: ${res.status}`);
+    const data = await res.json();
+    rulesFileSha = data.sha;
+    const decoded = JSON.parse(atob(data.content.replace(/\n/g,'')));
+    if (decoded.rules) CUSTOM_RULES = decoded.rules;
+    if (decoded.categories) CATEGORIES = decoded.categories;
+    setSyncStatus('ok', `Rules loaded · ${CUSTOM_RULES.length} custom rule${CUSTOM_RULES.length !== 1 ? 's' : ''}`);
+  } catch(e) {
+    setSyncStatus('err', 'Could not load rules: ' + e.message);
+  }
+}
+
+async function saveRulesToGitHub() {
+  if (!ghToken) { setSyncStatus('err', 'No token — rules not saved'); return; }
+  setSyncStatus('loading', 'Saving…');
+  const payload = { rules: CUSTOM_RULES, categories: CATEGORIES };
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
+  const body = { message: 'Update rules', content };
+  if (rulesFileSha) body.sha = rulesFileSha;
+  try {
+    const res = await fetch(GH_API, {
+      method: 'PUT',
+      headers: { Authorization: `token ${ghToken}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error(`GitHub error: ${res.status}`);
+    const data = await res.json();
+    rulesFileSha = data.content.sha;
+    setSyncStatus('ok', `Saved · ${CUSTOM_RULES.length} custom rule${CUSTOM_RULES.length !== 1 ? 's' : ''}`);
+  } catch(e) {
+    setSyncStatus('err', 'Save failed: ' + e.message);
+  }
+}
+
+function saveToken() {
+  const val = document.getElementById('tokenInput').value.trim();
+  if (!val) return;
+  ghToken = val;
+  localStorage.setItem('hf_gh_token', val);
+  document.getElementById('tokenInput').value = '';
+  loadRulesFromGitHub();
+}
+
+// Init
+if (ghToken) {
+  document.getElementById('setupBanner').querySelector('.setup-banner-title').textContent = 'GitHub sync · token saved';
+  loadRulesFromGitHub();
+} else {
+  setSyncStatus('', 'Enter a token above to enable rule syncing');
+}
+
+// ── Base rules ────────────────────────────────────────────────────────────
+const BASE_RULES = [
+  {m:'contains',v:'mobil overføring',cat:'INTERNAL'},
+  {m:'contains',v:'ukentlig overføring',cat:'INTERNAL'},
+  {m:'contains',v:'overføring mat og',cat:'INTERNAL'},
+  {m:'contains',v:'hjem',cat:'INTERNAL'},
+  {m:'contains',v:'tannlege skinne',cat:'INTERNAL'},
+  {m:'contains',v:'vibb',cat:'Housing'},
+  {m:'contains',v:'sameiet oscars gate',cat:'Housing'},
+  {m:'contains',v:'sameiet og59a',cat:'Housing'},
+  {m:'contains',v:'homely',cat:'Housing'},
+  {m:'regex',v:'boliglån|mortgage|lån\\s+510288',cat:'Housing'},
+  {m:'contains',v:'lånekassen',cat:'Housing'},
+  {m:'contains',v:'utdanningsetaten',cat:'Childcare'},
+  {m:'contains',v:'klaudia maria',cat:'Cleaning'},
+  {m:'contains',v:'klaudia',cat:'Cleaning'},
+  {m:'contains',v:'wolt',cat:'Wolt'},
+  {m:'contains',v:'åpent bakeri',cat:'Bakeries'},
+  {m:'contains',v:'apent bakeri',cat:'Bakeries'},
+  {m:'contains',v:'baker hansen',cat:'Bakeries'},
+  {m:'contains',v:'grains',cat:'Bakeries'},
+  {m:'contains',v:'fork kantiner',cat:'Restaurants'},
+  {m:'contains',v:'follum kantine',cat:'Restaurants'},
+  {m:'contains',v:'ekspedisjonshallen',cat:'Restaurants'},
+  {m:'contains',v:'lyngmo and co',cat:'Restaurants'},
+  {m:'contains',v:'credo',cat:'Restaurants'},
+  {m:'contains',v:'bax a358',cat:'Restaurants'},
+  {m:'contains',v:'northernlightyoga',cat:'Health & wellbeing'},
+  {m:'contains',v:'clou as youngstorget',cat:'Health & wellbeing'},
+  {m:'contains',v:'cec frisør',cat:'Health & wellbeing'},
+  {m:'contains',v:'ceciliestabell',cat:'Health & wellbeing'},
+  {m:'contains',v:'privattannlegen',cat:'Health & wellbeing'},
+  {m:'contains',v:'vitusapotek',cat:'Health & wellbeing'},
+  {m:'contains',v:'avonova',cat:'Health & wellbeing'},
+  {m:'contains',v:'dr furst',cat:'Health & wellbeing'},
+  {m:'contains',v:'ladeklubben',cat:'Transport'},
+  {m:'contains',v:'autosync',cat:'Transport'},
+  {m:'contains',v:'ruterappen',cat:'Transport'},
+  {m:'contains',v:'ruter',cat:'Transport'},
+  {m:'contains',v:'ryde technology',cat:'Transport'},
+  {m:'contains',v:'voi no',cat:'Transport'},
+  {m:'contains',v:'circle k',cat:'Transport'},
+  {m:'contains',v:'shell',cat:'Transport'},
+  {m:'contains',v:'st1 ',cat:'Transport'},
+  {m:'contains',v:'easypark',cat:'Transport'},
+  {m:'contains',v:'parkerings appen',cat:'Transport'},
+  {m:'contains',v:'flytaxi',cat:'Transport'},
+  {m:'contains',v:'tekna',cat:'Professional fees'},
+  {m:'contains',v:'universitetet i oslo',cat:'Education'},
+  {m:'contains',v:'prime video',cat:'Subscriptions'},
+  {m:'contains',v:'spotify',cat:'Subscriptions'},
+  {m:'contains',v:'google one',cat:'Subscriptions'},
+  {m:'contains',v:'bookbeat',cat:'Subscriptions'},
+  {m:'contains',v:'dropbox sign',cat:'Subscriptions'},
+  {m:'contains',v:'apple.com/bill',cat:'Subscriptions'},
+  {m:'contains',v:'nomad',cat:'Travel'},
+  {m:'contains',v:'mester grønn',cat:'Flowers'},
+  {m:'contains',v:'mester gronn',cat:'Flowers'},
+  {m:'contains',v:'paleet blomster',cat:'Flowers'},
+  {m:'contains',v:'unicef',cat:'Gifts'},
+  {m:'contains',v:'skatteetaten',cat:'Tax'},
+  {m:'contains',v:'oslo kommune',cat:'Tax'},
+  {m:'contains',v:'oda',cat:'Groceries'},
+  {m:'contains',v:'kiwi',cat:'Groceries'},
+  {m:'contains',v:'coop',cat:'Groceries'},
+  {m:'contains',v:'meny',cat:'Groceries'},
+  {m:'contains',v:'rema',cat:'Groceries'},
+  {m:'contains',v:'extra tynset',cat:'Groceries'},
+  {m:'contains',v:'dinter',cat:'Groceries'},
+  {m:'contains',v:'narvesen',cat:'Kiosk'},
+  {m:'contains',v:'7-eleven',cat:'Kiosk'},
+  {m:'contains',v:'norli',cat:'Books'},
+  {m:'contains',v:'nav ',cat:'INCOME_NAV'},
+  {m:'contains',v:'lønn',cat:'INCOME_SALARY'},
+  {m:'contains',v:'sindri projects',cat:'INCOME_PROJECT'},
+  {m:'contains',v:'norsk tipping',cat:'Entertainment'},
+  {m:'contains',v:'gjensidige',cat:'Insurance'},
+  {m:'contains',v:'lemonwax',cat:'Shopping'},
+  {m:'contains',v:'w22 interiør',cat:'Shopping'},
+];
+
+const BUDGET_VAR  = {Groceries:15000,Transport:4000,Cleaning:3840,Childcare:2640,Subscriptions:2000};
+const BUDGET_FIXED = {'Housing (fixed costs)':40261};
+
+// ── Classification ────────────────────────────────────────────────────────
+function getRules() { return [...CUSTOM_RULES,...BASE_RULES]; }
+function classify(desc) {
+  const d = desc.toLowerCase();
+  for (const r of getRules()) {
+    if (r.m==='contains' && d.includes(r.v)) return r.cat;
+    if (r.m==='regex' && new RegExp(r.v,'i').test(d)) return r.cat;
+  }
+  return 'Misc';
+}
+function isInternal(row) { return classify(row.desc)==='INTERNAL'; }
+function parseNOK(s) {
+  if (!s||s.trim()==='') return 0;
+  return parseFloat(s.replace(/\s/g,'').replace(/\./g,'').replace(',','.')) || 0;
+}
+function fmt(n) { return Math.round(n).toLocaleString('nb-NO')+'\u202Fkr'; }
+function varCell(actual,budget) {
+  const v=budget-actual;
+  if (v>0) return `<span class="pos">+${fmt(v)} left</span>`;
+  if (v<0) return `<span class="neg">−${fmt(Math.abs(v))} over</span>`;
+  return `<span class="muted">on budget</span>`;
+}
+
+// ── File upload ───────────────────────────────────────────────────────────
+const dz=document.getElementById('dz'),fi=document.getElementById('fi'),runBtn=document.getElementById('runBtn');
+dz.addEventListener('click',()=>fi.click());
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover');loadFile(e.dataTransfer.files[0]);});
+fi.addEventListener('change',()=>loadFile(fi.files[0]));
+
+function loadFile(file) {
+  if (!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    csvText=e.target.result;
+    document.getElementById('badge').innerHTML=`<div class="file-badge"><span>${file.name}</span><span class="rm" onclick="clearF()">×</span></div>`;
+    runBtn.disabled=false;
+  };
+  reader.readAsText(file,'UTF-8');
+}
+function clearF() {
+  csvText=null; fi.value=''; transferState={}; txOverrides={};
+  document.getElementById('badge').innerHTML='';
+  runBtn.disabled=true;
+  document.getElementById('report').innerHTML='';
+  document.getElementById('err').innerHTML='';
+}
+runBtn.addEventListener('click',()=>{
+  try { transferState={}; txOverrides={}; undoStack=[]; lastReport=analyze(csvText); render(lastReport); }
+  catch(e) { document.getElementById('err').innerHTML=`<div class="err">Error: ${e.message}</div>`; }
+});
+
+// ── Analysis ──────────────────────────────────────────────────────────────
+function uid(t) { return `${t.date}|${t.desc}|${t.ut}|${t.inn}`; }
+
+function analyze(raw) {
+  const text=raw.replace(/^\uFEFF/,'');
+  const lines=text.split(/\r?\n/).filter(l=>l.trim());
+  const rows=[];
+  for (let i=1;i<lines.length;i++) {
+    const cols=lines[i].split(';');
+    if (cols.length<5) continue;
+    rows.push({date:cols[0].trim(),desc:cols[2].trim(),ut:parseNOK(cols[3]),inn:parseNOK(cols[4])});
+  }
+  const allInternals=[],baseTransactions=[];
+  const seen=new Set();
+  for (const row of rows) {
+    const k=uid(row);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    if (isInternal(row)) { allInternals.push(row); continue; }
+    const cat=classify(row.desc);
+    if (['INCOME_NAV','INCOME_SALARY','INCOME_PROJECT'].includes(cat)&&row.inn>0)
+      baseTransactions.push({...row,cat,isIncome:true,amount:row.inn});
+    else if (row.inn>0&&row.ut===0&&!cat.startsWith('INCOME'))
+      baseTransactions.push({...row,cat:'Refund',isIncome:true,amount:row.inn});
+    else if (row.ut>0)
+      baseTransactions.push({...row,cat,isIncome:false,amount:row.ut});
+  }
+  allInternals.forEach((_,i)=>{ if (transferState[i]===undefined) transferState[i]='excluded'; });
+  return buildReport(allInternals,baseTransactions);
+}
+
+function buildReport(allInternals,baseTransactions) {
+  const extraIncome=allInternals.filter((_,i)=>transferState[i]==='income').map(t=>({...t,cat:'INCOME_TRANSFER',isIncome:true,amount:t.inn||t.ut}));
+  const allTx=[...baseTransactions,...extraIncome];
+  const expenses=[],income=allTx.filter(t=>t.isIncome);
+  for (const t of allTx.filter(t=>!t.isIncome)) {
+    const k=uid(t),ov=txOverrides[k];
+    if (ov&&ov.omit) continue;
+    expenses.push({...t,cat:ov?ov.cat:t.cat});
+  }
+  const byCategory={};
+  for (const t of expenses) { if (!byCategory[t.cat]) byCategory[t.cat]=[]; byCategory[t.cat].push(t); }
+  const dates=[...baseTransactions,...allInternals].map(r=>r.date).filter(Boolean).sort();
+  const d1=new Date(dates[0]),d2=new Date(dates[dates.length-1]);
+  const daysInMonth=new Date(d1.getFullYear(),d1.getMonth()+1,0).getDate();
+  const daysElapsed=Math.round((d2-d1)/86400000)+1;
+  const varRows=Object.entries(BUDGET_VAR).map(([cat,budget])=>({cat,budget,actual:(byCategory[cat]||[]).reduce((s,t)=>s+t.amount,0)}));
+  const fixedRows=Object.entries(BUDGET_FIXED).map(([cat,budget])=>({cat,budget,actual:(byCategory['Housing']||[]).reduce((s,t)=>s+t.amount,0)}));
+  const budgetedCats=new Set([...Object.keys(BUDGET_VAR),'Housing']);
+  const nonBudgeted=Object.entries(byCategory).filter(([c])=>!budgetedCats.has(c)&&!c.startsWith('INCOME')&&c!=='Refund').sort((a,b)=>b[1].reduce((s,t)=>s+t.amount,0)-a[1].reduce((s,t)=>s+t.amount,0));
+  const totalIncome=income.reduce((s,t)=>s+t.amount,0);
+  const totalExp=expenses.reduce((s,t)=>s+t.amount,0);
+  return {income,totalIncome,varRows,fixedRows,nonBudgeted,byCategory,totalExp,net:totalIncome-totalExp,allInternals,baseTransactions,daysElapsed,daysInMonth,isPartial:daysElapsed<daysInMonth-1,d1};
+}
+
+// ── Undo ──────────────────────────────────────────────────────────────────
+function pushUndo(label,fn) { undoStack.push({label,fn}); showToast(label); }
+function showToast(label) {
+  if (toastTimer) clearTimeout(toastTimer);
+  const t=document.getElementById('toast');
+  document.getElementById('toastMsg').textContent=label;
+  t.style.display='flex';
+  toastTimer=setTimeout(()=>t.style.display='none',4500);
+}
+function doUndo() {
+  if (!undoStack.length) return;
+  const {fn}=undoStack.pop(); fn();
+  if (toastTimer) clearTimeout(toastTimer);
+  document.getElementById('toast').style.display='none';
+  if (lastReport) { lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions); render(lastReport); }
+}
+
+// ── Drill-down ────────────────────────────────────────────────────────────
+function makeDrillId(id) { return 'drill_'+id.replace(/[^a-zA-Z0-9]/g,'_'); }
+function toggleDrill(id) {
+  const did=makeDrillId(id),row=document.getElementById(did),tr=document.getElementById('tr_'+did);
+  if (!row) return;
+  const isOpen=row.style.display!=='none';
+  row.style.display=isOpen?'none':'table-row';
+  if (tr) tr.classList.toggle('open',!isOpen);
+}
+function safeId(k) { return k.replace(/[^a-zA-Z0-9]/g,'_'); }
+function safeAttr(s) { return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+function drillHTML(transactions,catContext) {
+  const sorted=[...transactions].sort((a,b)=>b.amount-a.amount);
+  const opts=CATEGORIES.map(c=>`<option value="${c}"${c===catContext?'selected':''}>${c}</option>`).join('');
+  return `<div class="drill-inner"><table>${sorted.map(t=>{
+    const k=uid(t),sid='dsel_'+safeId(k);
+    return `<tr class="drill-tx-row">
+      <td class="dc">${t.date}</td>
+      <td>${t.desc}</td>
+      <td class="rc">
+        <select class="reclass-sel" id="${sid}">${opts}</select>
+        <button class="reclass-btn" onclick="reclassifyTx('${safeAttr(k)}','${safeAttr(catContext)}')">Move</button>
+        <button class="reclass-btn omit" onclick="omitTx('${safeAttr(k)}')">Other month</button>
+      </td>
+      <td class="ac">${fmt(t.amount)}</td>
+    </tr>`;
+  }).join('')}</table></div>`;
+}
+
+function reclassifyTx(k,oldCat) {
+  const sel=document.getElementById('dsel_'+safeId(k));
+  if (!sel) return;
+  const newCat=sel.value; if (newCat===oldCat) return;
+  const prev=txOverrides[k]?{...txOverrides[k]}:null;
+  txOverrides[k]={cat:newCat,omit:false};
+  pushUndo(`Moved to ${newCat}`,()=>{ if (prev) txOverrides[k]=prev; else delete txOverrides[k]; });
+  lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions); render(lastReport);
+}
+function omitTx(k) {
+  const prev=txOverrides[k]?{...txOverrides[k]}:null;
+  txOverrides[k]={omit:true};
+  pushUndo('Removed (other month)',()=>{ if (prev) txOverrides[k]=prev; else delete txOverrides[k]; });
+  lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions); render(lastReport);
+}
+
+function makeClickableRow(id,cells,drillTxs,catContext) {
+  const did=makeDrillId(id);
+  return `<tr class="clickable-row" id="tr_${did}" onclick="toggleDrill('${safeAttr(id)}')">
+    ${cells.map((c,i)=>`<td${i>0?' class="tr"':''}>${c}</td>`).join('')}
+  </tr>
+  <tr class="drill-row" id="${did}" style="display:none"><td colspan="${cells.length}">${drillHTML(drillTxs,catContext||id)}</td></tr>`;
+}
+
+// ── Transfers ─────────────────────────────────────────────────────────────
+function setTransfer(i,state) {
+  const prev=transferState[i];
+  transferState[i]=state;
+  pushUndo(`Transfer: ${state}`,()=>{ transferState[i]=prev; });
+  lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions); render(lastReport);
+}
+
+// ── Misc ──────────────────────────────────────────────────────────────────
+function classifyMisc(i,addRule) {
+  const miscTxs=lastReport.byCategory['Misc']||[],t=miscTxs[i];
+  if (!t) return;
+  const sel=document.getElementById('msel_'+i); if (!sel) return;
+  const newCat=sel.value,k=uid(t),prev=txOverrides[k]?{...txOverrides[k]}:null;
+  txOverrides[k]={cat:newCat,omit:false};
+  if (addRule) {
+    const kw=t.desc.toLowerCase().split(' ').slice(0,3).join(' ');
+    CUSTOM_RULES.push({m:'contains',v:kw,cat:newCat});
+    saveRulesToGitHub();
+    pushUndo(`Rule added: "${kw}" → ${newCat}`,()=>{ CUSTOM_RULES=CUSTOM_RULES.filter(r=>!(r.v===kw&&r.cat===newCat)); saveRulesToGitHub(); if (prev) txOverrides[k]=prev; else delete txOverrides[k]; });
+  } else {
+    pushUndo(`Classified as ${newCat}`,()=>{ if (prev) txOverrides[k]=prev; else delete txOverrides[k]; });
+  }
+  lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions); render(lastReport);
+}
+function omitMisc(i) {
+  const miscTxs=lastReport.byCategory['Misc']||[],t=miscTxs[i];
+  if (!t) return;
+  const k=uid(t),prev=txOverrides[k]?{...txOverrides[k]}:null;
+  txOverrides[k]={omit:true};
+  pushUndo('Removed (other month)',()=>{ if (prev) txOverrides[k]=prev; else delete txOverrides[k]; });
+  lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions); render(lastReport);
+}
+
+// ── Rules ─────────────────────────────────────────────────────────────────
+function deleteCustomRule(i) {
+  const removed=CUSTOM_RULES[i];
+  CUSTOM_RULES.splice(i,1); saveRulesToGitHub();
+  pushUndo(`Rule deleted: "${removed.v}"`,()=>{ CUSTOM_RULES.splice(i,0,removed); saveRulesToGitHub(); });
+  if (lastReport) { lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions); render(lastReport); }
+}
+
+// ── Categories ────────────────────────────────────────────────────────────
+function addCategory() {
+  const input=document.getElementById('newCatInput');
+  const name=input.value.trim();
+  if (!name||CATEGORIES.includes(name)) return;
+  CATEGORIES.push(name);
+  input.value='';
+  saveRulesToGitHub();
+  if (lastReport) { lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions); render(lastReport); }
+}
+function deleteCategory(cat) {
+  if (cat==='Misc') return;
+  CATEGORIES=CATEGORIES.filter(c=>c!==cat);
+  // move all txOverrides pointing to this cat → Misc
+  for (const k in txOverrides) { if (txOverrides[k].cat===cat) txOverrides[k]={cat:'Misc',omit:false}; }
+  // update CUSTOM_RULES pointing to this cat → Misc
+  CUSTOM_RULES=CUSTOM_RULES.map(r=>r.cat===cat?{...r,cat:'Misc'}:r);
+  saveRulesToGitHub();
+  if (lastReport) { lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions); render(lastReport); }
+}
+
+// ── Print report ──────────────────────────────────────────────────────────
+function printReport() { window.print(); }
+
+// ── Render ────────────────────────────────────────────────────────────────
+function render(d) {
+  const incomeSources={};
+  for (const t of d.income) {
+    const label=t.cat==='INCOME_SALARY'?'Salary':t.cat==='INCOME_NAV'?'NAV':t.cat==='INCOME_PROJECT'?'Project income':t.cat==='INCOME_TRANSFER'?'Salary transfer':'Refund';
+    incomeSources[label]=(incomeSources[label]||0)+t.amount;
+  }
+  const monthName=d.d1.toLocaleString('en-GB',{month:'long',year:'numeric'});
+
+  let h=`
+  <!-- Print header (hidden on screen) -->
+  <div class="print-only report-header">
+    <div class="report-title">Household Finance Report</div>
+    <div class="report-period">${monthName}${d.isPartial?' · partial month':''}</div>
+  </div>
+
+  <!-- Action bar -->
+  <div class="action-bar no-print">
+    <div class="action-bar-left"><span class="period-label">${monthName}${d.isPartial?' · partial month':''}</span></div>
+    <button class="btn-secondary" onclick="clearF()">← New file</button>
+    <button class="btn-report" onclick="printReport()">Print / Save PDF</button>
+  </div>`;
+
+  // Summary metrics
+  h+=`<div class="metrics">
+    <div class="metric"><div class="metric-label">Total income</div><div class="metric-value pos">${fmt(d.totalIncome)}</div></div>
+    <div class="metric"><div class="metric-label">Total expenses</div><div class="metric-value">${fmt(d.totalExp)}</div></div>
+    <div class="metric"><div class="metric-label">Net position</div><div class="metric-value ${d.net>=0?'pos':'neg'}">${d.net>=0?'+':''}${fmt(d.net)}</div></div>
+  </div>`;
+
+  // Income
+  h+=`<div class="section"><div class="section-title">Income</div><div class="table-wrap"><table>
+    <tr><th>Source</th><th class="tr">Amount</th></tr>
+    ${Object.entries(incomeSources).map(([k,v])=>`<tr><td>${k}</td><td class="tr">${fmt(v)}</td></tr>`).join('')}
+    <tr><td class="bold">Total</td><td class="tr bold">${fmt(d.totalIncome)}</td></tr>
+  </table></div></div>`;
+
+  // Variable budgeted
+  h+=`<div class="section"><div class="section-title">Variable costs — budgeted <span class="hint no-print">· click row to expand</span></div><div class="table-wrap"><table>
+    <tr><th>Category</th><th class="tr">Budget</th><th class="tr">Actual</th><th class="tr">Variance</th></tr>
+    ${d.varRows.map(r=>makeClickableRow(r.cat,[
+      `${r.cat}${r.actual>r.budget?'<span class="pill pill-red">over</span>':''}`,
+      `<span class="muted">${fmt(r.budget)}</span>`,fmt(r.actual),varCell(r.actual,r.budget)
+    ],d.byCategory[r.cat]||[],r.cat)).join('')}
+  </table></div></div>`;
+
+  // Fixed budgeted
+  h+=`<div class="section"><div class="section-title">Fixed costs — budgeted <span class="hint no-print">· click row to expand</span></div><div class="table-wrap"><table>
+    <tr><th>Category</th><th class="tr">Budget</th><th class="tr">Actual</th><th class="tr">Variance</th></tr>
+    ${d.fixedRows.map(r=>makeClickableRow(r.cat,[
+      `${r.cat}${r.actual>r.budget?'<span class="pill pill-red">over</span>':r.actual===0?'<span class="pill pill-amb">not seen</span>':''}`,
+      `<span class="muted">${fmt(r.budget)}</span>`,fmt(r.actual),varCell(r.actual,r.budget)
+    ],d.byCategory['Housing']||[],'Housing')).join('')}
+  </table></div></div>`;
+
+  // Non-budgeted
+  if (d.nonBudgeted.filter(([c])=>c!=='Misc').length>0) {
+    h+=`<div class="section"><div class="section-title">Non-budgeted expenses <span class="hint no-print">· click to expand</span></div><div class="table-wrap"><table>
+      <tr><th>Category</th><th class="tr">Transactions</th><th class="tr">Total</th></tr>
+      ${d.nonBudgeted.filter(([c])=>c!=='Misc').map(([cat,ts])=>makeClickableRow(cat+'_nb',[
+        `${cat}${ts.some(t=>t.amount>2000)?'<span class="pill pill-amb">notable</span>':''}`,
+        `<span class="muted">${ts.length}</span>`,fmt(ts.reduce((s,t)=>s+t.amount,0))
+      ],ts,cat)).join('')}
+    </table></div></div>`;
+  }
+
+  // Projection
+  if (d.isPartial) {
+    const rate=d.daysInMonth/d.daysElapsed,projExp=d.totalExp*rate;
+    const totalBudget=d.varRows.reduce((s,r)=>s+r.budget,0)+d.fixedRows.reduce((s,r)=>s+r.budget,0);
+    h+=`<div class="section"><div class="section-title">Projection — ${d.daysElapsed} of ${d.daysInMonth} days elapsed</div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-label">Projected expenses</div><div class="metric-value">${fmt(projExp)}</div></div>
+        <div class="metric"><div class="metric-label">Total budget</div><div class="metric-value">${fmt(totalBudget)}</div></div>
+        <div class="metric"><div class="metric-label">Projected vs budget</div><div class="metric-value ${projExp>totalBudget?'neg':'pos'}">${fmt(Math.abs(totalBudget-projExp))} ${projExp>totalBudget?'over':'left'}</div></div>
+      </div></div>`;
+  }
+
+  // Misc (shown in report too)
+  const miscTxs=d.byCategory['Misc']||[];
+  if (miscTxs.length>0) {
+    h+=`<div class="section"><div class="section-title">Remaining unclassified</div><div class="table-wrap"><table>
+      <tr><th>Date</th><th>Description</th><th class="tr">Amount</th></tr>
+      ${[...miscTxs].sort((a,b)=>b.amount-a.amount).map(t=>`<tr><td class="muted" style="font-family:'DM Mono',monospace;font-size:11px">${t.date}</td><td>${t.desc}</td><td class="tr">${fmt(t.amount)}</td></tr>`).join('')}
+    </table></div></div>`;
+  }
+
+  // ── Working area (hidden in print) ──────────────────────────────────────
+  h+=`<div class="no-print">`;
+
+  // Transfers
+  const internals=d.allInternals;
+  const incCount=internals.filter((_,i)=>transferState[i]==='income').length;
+  const skipCount=internals.filter((_,i)=>transferState[i]==='other').length;
+  h+=`<div class="section"><div class="section-title">Internal transfers <span class="hint">· review and correct</span></div>
+    <div class="transfer-summary">
+      <span>${internals.length} total</span>
+      <span class="pos">${incCount} included as salary</span>
+      <span class="muted">${internals.length-incCount-skipCount} excluded</span>
+      ${skipCount>0?`<span style="color:var(--red)">${skipCount} other month</span>`:''}
+    </div>
+    <div class="transfers-list">${internals.map((t,i)=>{
+      const state=transferState[i]||'excluded',amount=t.ut>0?t.ut:t.inn,dir=t.ut>0?'outgoing':'incoming';
+      const statusLabel=state==='income'?'<span class="ts ts-in">salary</span>':state==='other'?'<span class="ts ts-ot">other month</span>':'<span class="ts ts-ex">excluded</span>';
+      return `<div class="transfer-card">
+        <div class="transfer-info"><div class="transfer-desc">${t.desc}</div><div class="transfer-meta">${t.date} · ${dir}</div></div>
+        <div class="transfer-amount">${fmt(amount)}</div>
+        ${statusLabel}
+        <div class="transfer-actions">
+          <button class="tbtn ${state==='income'?'active-salary':''}" onclick="setTransfer(${i},'income')">Salary in</button>
+          <button class="tbtn ${state==='excluded'?'active-excluded':''}" onclick="setTransfer(${i},'excluded')">Exclude</button>
+          <button class="tbtn ${state==='other'?'active-other':''}" onclick="setTransfer(${i},'other')">Other month</button>
+        </div>
+      </div>`;
+    }).join('')}</div></div>`;
+
+  // Misc classifier
+  h+=`<div class="section"><div class="section-title">Classify unclassified transactions</div>`;
+  if (miscTxs.length===0) {
+    h+=`<div class="misc-all-done">All transactions classified</div>`;
+  } else {
+    h+=miscTxs.map((t,i)=>`<div class="misc-card">
+      <div class="misc-desc">${t.desc}</div>
+      <div class="misc-meta">${t.date} · ${fmt(t.amount)}</div>
+      <div class="misc-actions">
+        <select id="msel_${i}">${CATEGORIES.filter(c=>c!=='Misc').map(c=>`<option>${c}</option>`).join('')}</select>
+        <button class="mbtn" onclick="classifyMisc(${i},false)">Classify once</button>
+        <button class="mbtn primary" onclick="classifyMisc(${i},true)">+ add rule</button>
+        <button class="mbtn danger" onclick="omitMisc(${i})">Other month</button>
+      </div>
+    </div>`).join('');
+  }
+  h+=`</div>`;
+
+  // Category manager
+  h+=`<div class="section cat-section"><div class="section-title">Categories <span class="hint">· delete sends expenses back to Misc</span></div>
+    <div class="cat-manager">
+      ${CATEGORIES.filter(c=>c!=='Misc').map(cat=>`<div class="cat-row">
+        <span class="cat-name">${cat}</span>
+        <button class="cat-del" onclick="deleteCategory('${safeAttr(cat)}')">Delete</button>
+      </div>`).join('')}
+      <div class="cat-add-row">
+        <input class="cat-add-input" id="newCatInput" placeholder="New category name" onkeydown="if(event.key==='Enter')addCategory()">
+        <button class="cat-add-btn" onclick="addCategory()">Add category</button>
+      </div>
+    </div></div>`;
+
+  // Custom rules
+  h+=`<div class="section rules-section"><div class="section-title">Custom rules <span class="hint">· synced to GitHub</span></div>
+    <div class="rules-panel">${CUSTOM_RULES.length===0
+      ?`<div class="no-rules">No custom rules yet. Use "+ add rule" when classifying a transaction.</div>`
+      :CUSTOM_RULES.map((r,i)=>`<div class="rule-row"><span class="rule-kw">"${r.v}"</span><span class="rule-cat">→ ${r.cat}</span><button class="rule-del" onclick="deleteCustomRule(${i})">Delete</button></div>`).join('')
+    }</div></div>`;
+
+  h+=`</div>`; // end no-print
+
+  document.getElementById('report').innerHTML=h;
+}
+</script>
+</body>
+</html>
