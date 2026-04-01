@@ -14,6 +14,11 @@
       "m": "contains",
       "v": "follum kantine",
       "cat": "Jobblunch"
+    },
+    {
+      "m": "contains",
+      "v": "apotek 1 norge",
+      "cat": "Health & wellbeing"
     }
   ],
   "categories": [
