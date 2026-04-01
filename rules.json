@@ -24,6 +24,11 @@
       "m": "contains",
       "v": "statens lånekasse for",
       "cat": "Housing"
+    },
+    {
+      "m": "contains",
+      "v": "statens lånekasse for",
+      "cat": "Housing"
     }
   ],
   "categories": [
