@@ -139,6 +139,11 @@
       "m": "contains",
       "v": "date le benjamin",
       "cat": "Restaurants"
+    },
+    {
+      "m": "contains",
+      "v": "oslo.kommune.no",
+      "cat": "Transport"
     }
   ],
   "categories": [
