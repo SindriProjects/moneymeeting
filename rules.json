@@ -104,6 +104,11 @@
       "m": "contains",
       "v": "klarna: beeorganic.no",
       "cat": "Health & wellbeing"
+    },
+    {
+      "m": "contains",
+      "v": "moksha as",
+      "cat": "Bakeries"
     }
   ],
   "categories": [
