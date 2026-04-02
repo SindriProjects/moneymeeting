@@ -419,14 +419,17 @@ function toggleDrill(cat){
   row.style.display=isOpen?'none':'table-row';
   if(tr)tr.classList.toggle('open',!isOpen);
 }
+// Global registry so onclick never needs to embed raw strings with special chars
+var _txRegistry = {};
+function _regKey(k){ var id='tx_'+Object.keys(_txRegistry).length; _txRegistry[id]=k; return id; }
+
 function drillHTML(transactions,catContext){
   var sorted=transactions.slice().sort(function(a,b){return b.amount-a.amount;});
   var opts=CATEGORIES.map(function(c){return'<option value="'+c+'"'+(c===catContext?' selected':'')+'>'+c+'</option>';}).join('');
   return'<div class="drill-inner"><table>'+sorted.map(function(t){
     var k=uid(t),sid='dsel_'+k.replace(/[^a-zA-Z0-9]/g,'_');
-    var ek=k.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    var ec=catContext.replace(/'/g,"\\'");
-    return'<tr class="drill-tx-row"><td class="dc">'+t.date+'</td><td>'+t.desc+'</td><td class="rc"><select class="reclass-sel" id="'+sid+'">'+opts+'</select><button class="reclass-btn" onclick="reclassifyTx(\''+ek+'\',\''+ec+'\')">Move</button><button class="reclass-btn omit" onclick="omitTx(\''+ek+'\')">Other month</button></td><td class="ac">'+fmt(t.amount)+'</td></tr>';
+    var rid=_regKey(k);
+    return'<tr class="drill-tx-row"><td class="dc">'+t.date+'</td><td>'+t.desc+'</td><td class="rc"><select class="reclass-sel" id="'+sid+'">'+opts+'</select><button class="reclass-btn" onclick="reclassifyTx(_txRegistry[\''+rid+'\'],\''+catContext.replace(/'/g,"&#39;")+'\')">Move</button><button class="reclass-btn omit" onclick="omitTx(_txRegistry[\''+rid+'\'])">Other month</button></td><td class="ac">'+fmt(t.amount)+'</td></tr>';
   }).join('')+'</table></div>';
 }
 function reclassifyTx(k,oldCat){
@@ -553,6 +556,7 @@ function removeManualExpense(eid){
 }
 
 function render(d){
+  _txRegistry={};
   var monthName=d.d1.toLocaleString('en-GB',{month:'long',year:'numeric'});
   var h='<div class="report-print-header">Finance Report \u2014 '+monthName+'</div><div class="report-print-sub">Generated '+new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})+'</div><div class="period-label">'+monthName+(d.isPartial?' \u00b7 partial month':'')+'</div>';
 
@@ -573,9 +577,10 @@ function render(d){
     var opts=incLabels.map(function(c){return'<option value="'+c+'"'+(c===label?' selected':'')+'>'+c+'</option>';}).join('');
     var drows=txs.slice().sort(function(a,b){return b.amount-a.amount;}).map(function(t){
       var k=uid(t),sid='dsel_'+k.replace(/[^a-zA-Z0-9]/g,'_');
-      return'<tr class="drill-tx-row"><td class="dc">'+t.date+'</td><td>'+t.desc+'</td><td class="rc"><select class="reclass-sel" id="'+sid+'">'+opts+'</select><button class="reclass-btn" onclick="reclassifyIncomeTx(''+safeAttr(k)+'',''+safeAttr(label)+'')">Move</button><button class="reclass-btn omit" onclick="omitIncomeTx(''+safeAttr(k)+'')">Remove</button></td><td class="ac">'+fmt(t.amount)+'</td></tr>';
+      var rid=_regKey(k);
+      return'<tr class="drill-tx-row"><td class="dc">'+t.date+'</td><td>'+t.desc+'</td><td class="rc"><select class="reclass-sel" id="'+sid+'">'+opts+'</select><button class="reclass-btn" onclick="reclassifyIncomeTx(_txRegistry[\''+rid+'\'],\''+label.replace(/'/g,"&#39;")+'\')">Move</button><button class="reclass-btn omit" onclick="omitIncomeTx(_txRegistry[\''+rid+'\'])">Remove</button></td><td class="ac">'+fmt(t.amount)+'</td></tr>';
     }).join('');
-    return'<tr class="clickable-row" id="tr_'+did+'" onclick="toggleDrill(''+did+'')"><td>'+label+'</td><td class="tr">'+fmt(total)+'</td></tr>'
+    return'<tr class="clickable-row" id="tr_'+did+'" onclick="toggleDrill(\''+did+'\')"><td>'+label+'</td><td class="tr">'+fmt(total)+'</td></tr>'
       +'<tr class="drill-row" id="'+did+'" style="display:none"><td colspan="2"><div class="drill-inner"><table>'+drows+'</table></div></td></tr>';
   }).join('');
   h+='<div class="section"><div class="section-title">Income <span class="hint">\u00b7 click to expand</span></div><div class="table-wrap"><table><tr><th>Source</th><th class="tr">Amount</th></tr>'+incomeRows+'<tr><td class="bold">Total</td><td class="tr bold">'+fmt(d.totalIncome)+'</td></tr></table></div></div>';
