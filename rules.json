@@ -59,6 +59,11 @@
       "m": "contains",
       "v": "mocca kaffebar",
       "cat": "Bakeries"
+    },
+    {
+      "m": "contains",
+      "v": "apotek hjartat ode",
+      "cat": "Health & wellbeing"
     }
   ],
   "categories": [
