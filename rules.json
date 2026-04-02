@@ -74,6 +74,11 @@
       "m": "contains",
       "v": "nespresso btqosl-no-b1-10",
       "cat": "Groceries"
+    },
+    {
+      "m": "contains",
+      "v": "colonel mustard",
+      "cat": "Pub, Bar etc"
     }
   ],
   "categories": [
