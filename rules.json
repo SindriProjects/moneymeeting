@@ -159,6 +159,11 @@
       "m": "contains",
       "v": "sprell leker",
       "cat": "Barneutgifter"
+    },
+    {
+      "m": "contains",
+      "v": "the pub",
+      "cat": "Pub, Bar etc"
     }
   ],
   "categories": [
