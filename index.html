@@ -298,10 +298,15 @@ async function connectGitHub(){
   if(!ghToken)return;
   localStorage.setItem('gh_token',ghToken);
   await ghLoad();
+  document.querySelector('.gh-bar').style.display='none';
 }
 window.addEventListener('load',async function(){
   var stored=localStorage.getItem('gh_token');
-  if(stored){ghToken=stored;document.getElementById('ghToken').value=stored;await ghLoad();}
+  if(stored){
+    ghToken=stored;
+    await ghLoad();
+    if(ghConnected)document.querySelector('.gh-bar').style.display='none';
+  }
 });
 
 function getRules(){return CUSTOM_RULES.concat(BASE_RULES);}
@@ -628,7 +633,7 @@ function render(d){
   var internals=d.allInternals;
   var incCount=internals.filter(function(_,i){return transferState[i]==='income';}).length;
   var skipCount=internals.filter(function(_,i){return transferState[i]==='other';}).length;
-  var transfersCollapsed=window._transfersCollapsed||false;
+  var transfersCollapsed=window._transfersCollapsed===true;
   h+='<div class="section no-print" id="transferSection">';
   h+='<div class="section-title" style="cursor:pointer" onclick="toggleTransfers()">Internal transfers <span class="hint">\u00b7 '+internals.length+' total \u00b7 '+incCount+' salary \u00b7 click to '+(transfersCollapsed?'expand':'collapse')+'</span></div>';
   h+='<div id="transferBody" style="display:'+(transfersCollapsed?'none':'block')+'">';
