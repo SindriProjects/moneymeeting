@@ -69,6 +69,11 @@
       "m": "contains",
       "v": "apotek 1 norge",
       "cat": "Health & wellbeing"
+    },
+    {
+      "m": "contains",
+      "v": "nespresso btqosl-no-b1-10",
+      "cat": "Groceries"
     }
   ],
   "categories": [
