@@ -54,6 +54,11 @@
       "m": "contains",
       "v": "lilleaker service as",
       "cat": "Jobblunch"
+    },
+    {
+      "m": "contains",
+      "v": "mocca kaffebar",
+      "cat": "Bakeries"
     }
   ],
   "categories": [
