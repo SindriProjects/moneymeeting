@@ -114,6 +114,11 @@
       "m": "contains",
       "v": "cousins indekshuset",
       "cat": "Bakeries"
+    },
+    {
+      "m": "contains",
+      "v": "nok 142,35 ubr:",
+      "cat": "Transport"
     }
   ],
   "categories": [
