@@ -49,6 +49,11 @@
       "m": "contains",
       "v": "sprell butikk a",
       "cat": "Barneutgifter"
+    },
+    {
+      "m": "contains",
+      "v": "lilleaker service as",
+      "cat": "Jobblunch"
     }
   ],
   "categories": [
