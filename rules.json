@@ -154,6 +154,11 @@
       "m": "contains",
       "v": "alex sushi date",
       "cat": "Restaurants"
+    },
+    {
+      "m": "contains",
+      "v": "sprell leker",
+      "cat": "Barneutgifter"
     }
   ],
   "categories": [
