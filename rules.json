@@ -119,6 +119,11 @@
       "m": "contains",
       "v": "nok 142,35 ubr:",
       "cat": "Transport"
+    },
+    {
+      "m": "contains",
+      "v": "tjøme faste utgifter",
+      "cat": "Housing"
     }
   ],
   "categories": [
