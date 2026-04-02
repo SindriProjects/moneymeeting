@@ -29,6 +29,16 @@
       "m": "contains",
       "v": "statens lånekasse for",
       "cat": "Housing"
+    },
+    {
+      "m": "contains",
+      "v": "lilleaker service as",
+      "cat": "Jobblunch"
+    },
+    {
+      "m": "contains",
+      "v": "lån 1516.01.99714",
+      "cat": "Housing"
     }
   ],
   "categories": [
@@ -53,6 +63,7 @@
     "Books",
     "Misc",
     "Jobblunch",
-    "Pub, Bar etc"
+    "Pub, Bar etc",
+    "Barneutgifter"
   ]
 }
