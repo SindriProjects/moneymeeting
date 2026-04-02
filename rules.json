@@ -144,6 +144,11 @@
       "m": "contains",
       "v": "oslo.kommune.no",
       "cat": "Transport"
+    },
+    {
+      "m": "contains",
+      "v": "eplehuset hegde",
+      "cat": "Shopping"
     }
   ],
   "categories": [
