@@ -79,6 +79,11 @@
       "m": "contains",
       "v": "colonel mustard",
       "cat": "Pub, Bar etc"
+    },
+    {
+      "m": "contains",
+      "v": "zwift, inc.",
+      "cat": "Health & wellbeing"
     }
   ],
   "categories": [
