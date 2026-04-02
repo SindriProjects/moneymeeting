@@ -44,6 +44,11 @@
       "m": "contains",
       "v": "kaffebrenneriet",
       "cat": "Bakeries"
+    },
+    {
+      "m": "contains",
+      "v": "sprell butikk a",
+      "cat": "Barneutgifter"
     }
   ],
   "categories": [
