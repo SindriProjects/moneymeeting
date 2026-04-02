@@ -99,6 +99,11 @@
       "m": "contains",
       "v": "klarna: sunkost.no",
       "cat": "Health & wellbeing"
+    },
+    {
+      "m": "contains",
+      "v": "klarna: beeorganic.no",
+      "cat": "Health & wellbeing"
     }
   ],
   "categories": [
