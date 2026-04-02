@@ -134,6 +134,11 @@
       "m": "contains",
       "v": "henriette drillestad",
       "cat": "Childcare"
+    },
+    {
+      "m": "contains",
+      "v": "date le benjamin",
+      "cat": "Restaurants"
     }
   ],
   "categories": [
