@@ -129,6 +129,11 @@
       "m": "contains",
       "v": "nok 1006,29 fiskeroa.com",
       "cat": "Transport"
+    },
+    {
+      "m": "contains",
+      "v": "henriette drillestad",
+      "cat": "Childcare"
     }
   ],
   "categories": [
