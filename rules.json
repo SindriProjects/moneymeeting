@@ -22,12 +22,12 @@
     },
     {
       "m": "contains",
-      "v": "statens lånekasse for",
+      "v": "statens lÃ¥nekasse for",
       "cat": "Housing"
     },
     {
       "m": "contains",
-      "v": "statens lånekasse for",
+      "v": "statens lÃ¥nekasse for",
       "cat": "Housing"
     },
     {
@@ -37,7 +37,7 @@
     },
     {
       "m": "contains",
-      "v": "lån 1516.01.99714",
+      "v": "lÃ¥n 1516.01.99714",
       "cat": "Housing"
     },
     {
@@ -122,7 +122,7 @@
     },
     {
       "m": "contains",
-      "v": "tjøme faste utgifter",
+      "v": "tjÃ¸me faste utgifter",
       "cat": "Housing"
     },
     {
@@ -164,6 +164,11 @@
       "m": "contains",
       "v": "the pub",
       "cat": "Pub, Bar etc"
+    },
+    {
+      "m": "contains",
+      "v": "statens lånekasse for",
+      "cat": "Housing"
     }
   ],
   "categories": [
