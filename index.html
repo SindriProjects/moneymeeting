@@ -84,6 +84,8 @@ tr:last-child td{border-bottom:none;}
 .ts-in{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);}
 .ts-ex{background:var(--surface2);color:var(--text3);border:1px solid var(--border);}
 .ts-ot{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);}
+.tbtn.active-buffer{background:#eef4fc;color:#185fa5;border-color:#b8d4f0;font-weight:500;}
+.ts-buf{background:#eef4fc;color:#185fa5;border:1px solid #b8d4f0;}
 .transfer-summary{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 16px;font-size:12px;color:var(--text2);display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px;}
 .misc-all-done{background:var(--green-bg);border:1px solid var(--green-bd);border-radius:var(--r);padding:14px 16px;font-size:13px;color:var(--green);text-align:center;font-weight:500;}
 .rules-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;}
@@ -369,7 +371,7 @@ function analyze(raw){
     var cat=classify(row.desc);
     if(['INCOME_NAV','INCOME_SALARY','INCOME_PROJECT'].indexOf(cat)>=0&&row.inn>0)
       baseTransactions.push(Object.assign({},row,{cat:cat,isIncome:true,amount:row.inn}));
-    else if(row.inn>0&&row.ut===0&&cat.indexOf('INCOME')!==0)
+    else if(row.inn>0&&row.ut===0&&cat.indexOf('INCOME')!==0&&row.inn>=100&&!/dnb bank|rente|cashback|utbytte/i.test(row.desc))
       baseTransactions.push(Object.assign({},row,{cat:'Refund',isIncome:true,amount:row.inn}));
     else if(row.ut>0)
       baseTransactions.push(Object.assign({},row,{cat:cat,isIncome:false,amount:row.ut}));
@@ -419,6 +421,13 @@ function doUndo(){
 function makeDrillId(cat){return'drill_'+cat.replace(/[^a-zA-Z0-9]/g,'_');}
 function toggleDrill(cat){
   var id=makeDrillId(cat),row=document.getElementById(id),tr=document.getElementById('tr_'+id);
+  if(!row)return;
+  var isOpen=row.style.display!=='none';
+  row.style.display=isOpen?'none':'table-row';
+  if(tr)tr.classList.toggle('open',!isOpen);
+}
+function toggleDrillById(id){
+  var row=document.getElementById(id),tr=document.getElementById('tr_'+id);
   if(!row)return;
   var isOpen=row.style.display!=='none';
   row.style.display=isOpen?'none':'table-row';
@@ -585,7 +594,7 @@ function render(d){
       var rid=_regKey(k);
       return'<tr class="drill-tx-row"><td class="dc">'+t.date+'</td><td>'+t.desc+'</td><td class="rc"><select class="reclass-sel" id="'+sid+'">'+opts+'</select><button class="reclass-btn" onclick="reclassifyIncomeTx(_txRegistry[\''+rid+'\'],\''+label.replace(/'/g,"&#39;")+'\')">Move</button><button class="reclass-btn omit" onclick="omitIncomeTx(_txRegistry[\''+rid+'\'])">Remove</button></td><td class="ac">'+fmt(t.amount)+'</td></tr>';
     }).join('');
-    return'<tr class="clickable-row" id="tr_'+did+'" onclick="toggleDrill(\''+did+'\')"><td>'+label+'</td><td class="tr">'+fmt(total)+'</td></tr>'
+    return'<tr class="clickable-row" id="tr_'+did+'" onclick="toggleDrillById(\''+did+'\')"><td>'+label+'</td><td class="tr">'+fmt(total)+'</td></tr>'
       +'<tr class="drill-row" id="'+did+'" style="display:none"><td colspan="2"><div class="drill-inner"><table>'+drows+'</table></div></td></tr>';
   }).join('');
   h+='<div class="section"><div class="section-title">Income <span class="hint">\u00b7 click to expand</span></div><div class="table-wrap"><table><tr><th>Source</th><th class="tr">Amount</th></tr>'+incomeRows+'<tr><td class="bold">Total</td><td class="tr bold">'+fmt(d.totalIncome)+'</td></tr></table></div></div>';
@@ -715,7 +724,8 @@ function render(d){
   h+='<div class="section no-print" id="transferSection">';
   h+='<div class="section-title" style="cursor:pointer" onclick="toggleTransfers()">Internal transfers <span class="hint">\u00b7 '+internals.length+' total \u00b7 '+incCount+' salary \u00b7 click to '+(transfersCollapsed?'expand':'collapse')+'</span></div>';
   h+='<div id="transferBody" style="display:'+(transfersCollapsed?'none':'block')+'">';
-  h+='<div class="transfer-summary"><span>'+internals.length+' total</span><span class="pos">'+incCount+' included as salary</span><span class="muted">'+(internals.length-incCount-skipCount)+' excluded</span>'+(skipCount>0?'<span style="color:var(--red)">'+skipCount+' other month</span>':'')+'</div><div class="transfers-list">'+internals.map(function(t,i){var state=transferState[i]||'excluded',amount=t.ut>0?t.ut:t.inn,dir=t.ut>0?'outgoing':'incoming',sl=state==='income'?'<span class="ts ts-in">salary</span>':state==='other'?'<span class="ts ts-ot">other month</span>':'<span class="ts ts-ex">excluded</span>';return'<div class="transfer-card"><div class="transfer-info"><div class="transfer-desc">'+t.desc+'</div><div class="transfer-meta">'+t.date+' \u00b7 '+dir+'</div></div><div class="transfer-amount">'+fmt(amount)+'</div>'+sl+'<div class="transfer-actions"><button class="tbtn '+(state==='income'?'active-salary':'')+'" onclick="setTransfer('+i+',\'income\')">Salary in</button><button class="tbtn '+(state==='excluded'?'active-excluded':'')+'" onclick="setTransfer('+i+',\'excluded\')">Exclude</button><button class="tbtn '+(state==='other'?'active-other':'')+'" onclick="setTransfer('+i+',\'other\')">Other month</button></div></div>';}).join('')+'</div>';
+  var bufCount=internals.filter(function(_,i){return transferState[i]==='buffer';}).length;
+  h+='<div class="transfer-summary"><span>'+internals.length+' total</span><span class="pos">'+incCount+' salary</span>'+(bufCount>0?'<span style="color:#185fa5">'+bufCount+' buffer</span>':'')+'<span class="muted">'+(internals.length-incCount-skipCount-bufCount)+' excluded</span>'+(skipCount>0?'<span style="color:var(--red)">'+skipCount+' other month</span>':'')+'</div><div class="transfers-list">'+internals.map(function(t,i){var state=transferState[i]||'excluded',amount=t.ut>0?t.ut:t.inn,dir=t.ut>0?'outgoing':'incoming',sl=state==='income'?'<span class="ts ts-in">salary</span>':state==='other'?'<span class="ts ts-ot">other month</span>':state==='buffer'?'<span class="ts ts-buf">buffer</span>':'<span class="ts ts-ex">excluded</span>';return'<div class="transfer-card"><div class="transfer-info"><div class="transfer-desc">'+t.desc+'</div><div class="transfer-meta">'+t.date+' \u00b7 '+dir+'</div></div><div class="transfer-amount">'+fmt(amount)+'</div>'+sl+'<div class="transfer-actions"><button class="tbtn '+(state==='income'?'active-salary':'')+'" onclick="setTransfer('+i+',\'income\')">Salary in</button><button class="tbtn '+(state==='buffer'?'active-buffer':'')+'" onclick="setTransfer('+i+',\'buffer\')">Buffer</button><button class="tbtn '+(state==='excluded'?'active-excluded':'')+'" onclick="setTransfer('+i+',\'excluded\')">Exclude</button><button class="tbtn '+(state==='other'?'active-other':'')+'" onclick="setTransfer('+i+',\'other\')">Other month</button></div></div>';}).join('')+'</div>';
   h+='</div></div>';
 
   h+='<div class="section no-print" id="rulesSection"><div class="section-title">Custom rules <span class="hint">\u00b7 synced to GitHub \u00b7 shared with all users</span></div><div class="rules-panel">'+(CUSTOM_RULES.length===0?'<div class="no-rules">No custom rules yet. Use "+Rule" when classifying an unclassified transaction.</div>':CUSTOM_RULES.map(function(r,i){return'<div class="rule-row"><span class="rule-kw">"'+r.v+'"</span><span class="rule-cat">\u2192 '+r.cat+'</span><button class="rule-del" onclick="deleteCustomRule('+i+')">Delete</button></div>';}).join(''))+'</div></div>';
