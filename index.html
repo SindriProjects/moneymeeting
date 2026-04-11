@@ -84,7 +84,6 @@ tr:last-child td{border-bottom:none;}
 .ts-in{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);}
 .ts-ex{background:var(--surface2);color:var(--text3);border:1px solid var(--border);}
 .ts-ot{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);}
-.tbtn.active-buffer{background:#eef4fc;color:#185fa5;border-color:#b8d4f0;font-weight:500;}
 .ts-buf{background:#eef4fc;color:#185fa5;border:1px solid #b8d4f0;}
 .transfer-summary{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 16px;font-size:12px;color:var(--text2);display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px;}
 .misc-all-done{background:var(--green-bg);border:1px solid var(--green-bd);border-radius:var(--r);padding:14px 16px;font-size:13px;color:var(--green);text-align:center;font-weight:500;}
@@ -179,6 +178,11 @@ let ghToken=localStorage.getItem('gh_token')||'';
 let ghConnected=false,ghSha=null;
 let csvText=null,lastReport=null,transferState={},txOverrides={},undoStack=[],toastTimer=null;
 let manualExpenses=[]; // [{desc,amount,cat,date}]
+window._fixedPaid=window._fixedPaid||{};
+function setFixedPaid(key,state){
+  window._fixedPaid[key]=state;
+  if(lastReport){lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions);render(lastReport);}
+}
 
 const BASE_RULES=[
   {m:'contains',v:'mobil overf\u00f8ring',cat:'INTERNAL'},
@@ -419,12 +423,9 @@ function doUndo(){
 }
 
 function makeDrillId(cat){return'drill_'+cat.replace(/[^a-zA-Z0-9]/g,'_');}
+window._openDrills=window._openDrills||{};
 function toggleDrill(cat){
-  var id=makeDrillId(cat),row=document.getElementById(id),tr=document.getElementById('tr_'+id);
-  if(!row)return;
-  var isOpen=row.style.display!=='none';
-  row.style.display=isOpen?'none':'table-row';
-  if(tr)tr.classList.toggle('open',!isOpen);
+  var id=makeDrillId(cat);toggleDrillById(id);
 }
 function toggleDrillById(id){
   var row=document.getElementById(id),tr=document.getElementById('tr_'+id);
@@ -432,6 +433,15 @@ function toggleDrillById(id){
   var isOpen=row.style.display!=='none';
   row.style.display=isOpen?'none':'table-row';
   if(tr)tr.classList.toggle('open',!isOpen);
+  window._openDrills[id]=!isOpen;
+}
+function restoreOpenDrills(){
+  Object.keys(window._openDrills).forEach(function(id){
+    if(!window._openDrills[id])return;
+    var row=document.getElementById(id),tr=document.getElementById('tr_'+id);
+    if(row){row.style.display='table-row';}
+    if(tr){tr.classList.add('open');}
+  });
 }
 // Global registry so onclick never needs to embed raw strings with special chars
 var _txRegistry = {};
@@ -533,7 +543,7 @@ function reclassifyIncomeTx(k, oldLabel) {
   if(newLabel==='EXCLUDE'){
     txOverrides[k]={omit:true,isIncome:true};
   } else {
-    var catMap={'Salary':'INCOME_SALARY','NAV':'INCOME_NAV','Project income':'INCOME_PROJECT','Salary transfer':'INCOME_TRANSFER','Refund':'INCOME_REFUND'};
+    var catMap={'Salary':'INCOME_SALARY','NAV':'INCOME_NAV','Other income':'INCOME_PROJECT','Salary transfer':'INCOME_TRANSFER','Refund':'INCOME_REFUND'};
     txOverrides[k]={incomeLabel:newLabel,cat:catMap[newLabel]||'INCOME_SALARY',omit:false,isIncome:true};
   }
   pushUndo('Income moved to '+newLabel,function(){if(prev)txOverrides[k]=prev;else delete txOverrides[k];});
@@ -574,30 +584,42 @@ function render(d){
   var monthName=d.d1.toLocaleString('en-GB',{month:'long',year:'numeric'});
   var h='<div class="report-print-header">Finance Report \u2014 '+monthName+'</div><div class="report-print-sub">Generated '+new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})+'</div><div class="period-label">'+monthName+(d.isPartial?' \u00b7 partial month':'')+'</div>';
 
-  h+='<div class="metrics"><div class="metric"><div class="metric-label">Total income</div><div class="metric-value pos">'+fmt(d.totalIncome)+'</div></div><div class="metric"><div class="metric-label">Total expenses</div><div class="metric-value">'+fmt(d.totalExp)+'</div></div><div class="metric"><div class="metric-label">Net position</div><div class="metric-value '+(d.net>=0?'pos':'neg')+'">'+(d.net>=0?'+':'')+fmt(d.net)+'</div></div></div>';
-
-  // Income — expandable per source
+  // Income — compute buffer before rendering metrics
   var incomeByLabel={};
   d.income.forEach(function(t){
     var ov=txOverrides[uid(t)];
-    var label=ov&&ov.incomeLabel?ov.incomeLabel:(t.cat==='INCOME_SALARY'?'Salary':t.cat==='INCOME_NAV'?'NAV':t.cat==='INCOME_PROJECT'?'Project income':t.cat==='INCOME_TRANSFER'?'Salary transfer':'Refund');
+    var label=ov&&ov.incomeLabel?ov.incomeLabel:(t.cat==='INCOME_SALARY'?'Salary':t.cat==='INCOME_NAV'?'NAV':t.cat==='INCOME_PROJECT'?'Other income':t.cat==='INCOME_TRANSFER'?'Salary transfer':'Refund');
     if(!incomeByLabel[label])incomeByLabel[label]=[];
     incomeByLabel[label].push(t);
   });
-  var incLabels=['Salary','NAV','Project income','Salary transfer','Refund','EXCLUDE'];
+  var bufferTotal=(incomeByLabel['Buffer drawdown']||[]).reduce(function(s,t){return s+t.amount;},0);
+  var realIncome=d.totalIncome-bufferTotal;
+
+  h+='<div class="metrics"><div class="metric"><div class="metric-label">Total income</div><div class="metric-value pos">'+fmt(realIncome)+'</div></div><div class="metric"><div class="metric-label">Total expenses</div><div class="metric-value">'+fmt(d.totalExp)+'</div></div><div class="metric"><div class="metric-label">Net position</div><div class="metric-value '+(( realIncome-d.totalExp)>=0?'pos':'neg')+'">'+(( realIncome-d.totalExp)>=0?'+':'')+fmt(realIncome-d.totalExp)+'</div></div></div>';
+
+  // Buffer alert box
+  if(bufferTotal>0){
+    h+='<div style="background:#eef4fc;border:1px solid #b8d4f0;border-radius:var(--r);padding:12px 18px;margin-bottom:24px;display:flex;align-items:center;gap:14px;">';
+    h+='<div style="font-size:20px;font-weight:500;color:#185fa5;white-space:nowrap;">'+fmt(bufferTotal)+'</div>';
+    h+='<div><div style="font-size:12px;font-weight:500;color:#185fa5;">Buffer drawn this month</div><div style="font-size:12px;color:#185fa5;opacity:.75;">Expand the income section below to reclassify individual transactions</div></div>';
+    h+='</div>';
+  }
+
+  var incLabels=['Salary','NAV','Other income','Salary transfer','Refund','Buffer drawdown','EXCLUDE'];
   var incomeRows=Object.keys(incomeByLabel).map(function(label){
     var txs=incomeByLabel[label],total=txs.reduce(function(s,t){return s+t.amount;},0);
     var did='drill_income_'+label.replace(/[^a-zA-Z0-9]/g,'_');
     var opts=incLabels.map(function(c){return'<option value="'+c+'"'+(c===label?' selected':'')+'>'+c+'</option>';}).join('');
+    var isBuf=label==='Buffer drawdown';
     var drows=txs.slice().sort(function(a,b){return b.amount-a.amount;}).map(function(t){
       var k=uid(t),sid='dsel_'+k.replace(/[^a-zA-Z0-9]/g,'_');
       var rid=_regKey(k);
       return'<tr class="drill-tx-row"><td class="dc">'+t.date+'</td><td>'+t.desc+'</td><td class="rc"><select class="reclass-sel" id="'+sid+'">'+opts+'</select><button class="reclass-btn" onclick="reclassifyIncomeTx(_txRegistry[\''+rid+'\'],\''+label.replace(/'/g,"&#39;")+'\')">Move</button><button class="reclass-btn omit" onclick="omitIncomeTx(_txRegistry[\''+rid+'\'])">Remove</button></td><td class="ac">'+fmt(t.amount)+'</td></tr>';
     }).join('');
-    return'<tr class="clickable-row" id="tr_'+did+'" onclick="toggleDrillById(\''+did+'\')"><td>'+label+'</td><td class="tr">'+fmt(total)+'</td></tr>'
+    return'<tr class="clickable-row" id="tr_'+did+'" onclick="toggleDrillById(\''+did+'\')"><td>'+(isBuf?'<span style="color:#185fa5">'+label+'</span>':label)+'</td><td class="tr"'+(isBuf?' style="color:#185fa5"':'')+'>'+fmt(total)+'</td></tr>'
       +'<tr class="drill-row" id="'+did+'" style="display:none"><td colspan="2"><div class="drill-inner"><table>'+drows+'</table></div></td></tr>';
   }).join('');
-  h+='<div class="section"><div class="section-title">Income <span class="hint">\u00b7 click to expand</span></div><div class="table-wrap"><table><tr><th>Source</th><th class="tr">Amount</th></tr>'+incomeRows+'<tr><td class="bold">Total</td><td class="tr bold">'+fmt(d.totalIncome)+'</td></tr></table></div></div>';
+  h+='<div class="section"><div class="section-title">Income <span class="hint">\u00b7 click to expand</span></div><div class="table-wrap"><table><tr><th>Source</th><th class="tr">Amount</th></tr>'+incomeRows+'<tr><td class="bold">Real income (excl. buffer)</td><td class="tr bold">'+fmt(realIncome)+'</td></tr></table></div></div>';
 
   h+='<div class="section"><div class="section-title">Variable costs \u2014 budgeted <span class="hint">\u00b7 click to expand</span></div><div class="table-wrap"><table><tr><th>Category</th><th class="tr">Budget</th><th class="tr">Actual</th><th class="tr">Variance</th></tr>'+d.varRows.map(function(r){return makeClickableRow(r.cat,[r.cat+(r.actual>r.budget?'<span class="pill pill-red">over</span>':''),'<span class="muted">'+fmt(r.budget)+'</span>',fmt(r.actual),varCell(r.actual,r.budget)],d.byCategory[r.cat]||[]);}).join('')+'</table></div></div>';
 
@@ -627,11 +649,11 @@ function render(d){
     var salaryReceived=salaryActual>0;
     var salaryForCalc=salaryReceived?salaryActual:SALARY_EXPECTED;
 
-    // Other income (NAV, project, refunds) — always use actual
+    // Other income (NAV, project, refunds) — always use actual, exclude buffer drawdowns
     var otherIncome=d.income.filter(function(t){
       var ov=txOverrides[uid(t)];
       var label=ov&&ov.incomeLabel?ov.incomeLabel:(t.cat==='INCOME_SALARY'?'Salary':t.cat==='INCOME_TRANSFER'?'Salary transfer':null);
-      return label!=='Salary'&&label!=='Salary transfer';
+      return label!=='Salary'&&label!=='Salary transfer'&&label!=='Buffer drawdown';
     }).reduce(function(s,t){return s+t.amount;},0);
 
     var effectiveIncome=salaryForCalc+otherIncome;
@@ -648,16 +670,23 @@ function render(d){
     h+='</div></div>';
 
     // ── Headroom ─────────────────────────────────────────────────────────
+    // Search ALL expense transactions for each fixed item (not just one category)
+    var allExpenseTxs=Object.keys(d.byCategory).reduce(function(arr,cat){return arr.concat(d.byCategory[cat]||[]);},[]); 
     var fixedItems=[
-      {label:'Mortgage',amount:28000,seen:!!(d.byCategory['Housing']||[]).some(function(t){return/bolij|mortgage|lån\s+510288/i.test(t.desc);})},
-      {label:'Sameiet OG59A',amount:4004,seen:!!(d.byCategory['Housing']||[]).some(function(t){return/sameiet og59a/i.test(t.desc);})},
-      {label:'Lånekassen',amount:3418,seen:!!(d.byCategory['Housing']||[]).some(function(t){return/lånekassen/i.test(t.desc);})},
-      {label:'Homely',amount:339,seen:!!(d.byCategory['Housing']||[]).some(function(t){return/homely/i.test(t.desc);})},
-      {label:'Unicef',amount:500,seen:!!(d.byCategory['Gifts']||[]).some(function(t){return/unicef/i.test(t.desc);})},
-      {label:'Tjøme',amount:1000,seen:!!(d.byCategory['Housing']||[]).some(function(t){return/tj.?me/i.test(t.desc);})},
-      {label:'Property tax',amount:500,seen:!!(d.byCategory['Tax']||[]).some(function(t){return t.amount>=400&&t.amount<=600;})},
-      {label:'Childcare (nursery)',amount:2640,seen:!!(d.byCategory['Childcare']||[]).length>0},
-    ];
+      {key:'mortgage', label:'Mortgage',amount:28000,     patterns:[/bolij/i,/mortgage/i,/l.n\s+510288/i]},
+      {key:'sameiet',  label:'Sameiet OG59A',amount:4004, patterns:[/sameiet og59a/i]},
+      {key:'laan',     label:'Lånekassen',amount:3418,    patterns:[/l.nekassen/i,/lanekassen/i,/lånekassen/i]},
+      {key:'homely',   label:'Homely',amount:339,          patterns:[/homely/i]},
+      {key:'unicef',   label:'Unicef',amount:500,          patterns:[/unicef/i]},
+      {key:'tjome',    label:'Tjøme',amount:1000,          patterns:[/tj.?me/i]},
+      {key:'proptax',  label:'Property tax',amount:500,    patterns:[/skatteetaten/i,/eiendomsskatt/i]},
+      {key:'childcare',label:'Childcare (nursery)',amount:2640,patterns:[/utdanningsetaten/i,/barnehage/i]},
+    ].map(function(item){
+      var autoSeen=allExpenseTxs.some(function(t){return item.patterns.some(function(p){return p.test(t.desc);});});
+      var manualState=window._fixedPaid&&window._fixedPaid[item.key]; // 'paid'|'pending'|undefined
+      var seen=manualState==='paid'||(manualState!=='pending'&&autoSeen);
+      return Object.assign({},item,{seen:seen,autoSeen:autoSeen,manualState:manualState||null});
+    });
     var pendingFixed=fixedItems.filter(function(x){return!x.seen;});
     var pendingFixedTotal=pendingFixed.reduce(function(s,x){return s+x.amount;},0);
     var headroom=effectiveIncome-d.totalExp-pendingFixedTotal;
@@ -670,23 +699,35 @@ function render(d){
     h+='<div class="metric"><div class="metric-label">Headroom left</div><div class="metric-value '+headroomColor+'">'+fmt(headroom)+'</div></div>';
     h+='</div>';
     h+='<div class="table-wrap"><table>';
-    h+='<tr><th>Item</th><th class="tr">Amount</th><th>Status</th></tr>';
+    h+='<tr><th>Item</th><th class="tr">Amount</th><th>Status</th><th></th></tr>';
     if(!salaryReceived){
-      h+='<tr><td>Salary (person 1) <span class="pill pill-amb">expected</span></td><td class="tr pos">+'+fmt(SALARY_PER_PERSON)+'</td><td class="muted">not yet received</td></tr>';
-      h+='<tr><td>Salary (person 2) <span class="pill pill-amb">expected</span></td><td class="tr pos">+'+fmt(SALARY_PER_PERSON)+'</td><td class="muted">not yet received</td></tr>';
+      h+='<tr><td>Salary (person 1) <span class="pill pill-amb">expected</span></td><td class="tr pos">+'+fmt(SALARY_PER_PERSON)+'</td><td class="muted">not yet received</td><td></td></tr>';
+      h+='<tr><td>Salary (person 2) <span class="pill pill-amb">expected</span></td><td class="tr pos">+'+fmt(SALARY_PER_PERSON)+'</td><td class="muted">not yet received</td><td></td></tr>';
     }else{
-      h+='<tr><td>Salary received</td><td class="tr pos">+'+fmt(salaryActual)+'</td><td class="muted">seen in file</td></tr>';
+      h+='<tr><td>Salary received</td><td class="tr pos">+'+fmt(salaryActual)+'</td><td class="muted">seen in file</td><td></td></tr>';
     }
     if(otherIncome>0){
-      h+='<tr><td>Other income</td><td class="tr pos">+'+fmt(otherIncome)+'</td><td class="muted">seen in file</td></tr>';
+      h+='<tr><td>Other income</td><td class="tr pos">+'+fmt(otherIncome)+'</td><td class="muted">seen in file</td><td></td></tr>';
     }
-    h+='<tr><td>Expenses so far</td><td class="tr neg">\u2212'+fmt(d.totalExp)+'</td><td class="muted">all classified transactions</td></tr>';
-    if(pendingFixed.length>0){
-      pendingFixed.forEach(function(x){
-        h+='<tr><td>'+x.label+' <span class="pill pill-amb">pending</span></td><td class="tr neg">\u2212'+fmt(x.amount)+'</td><td class="muted">not yet seen this month</td></tr>';
-      });
+    h+='<tr><td>Expenses so far</td><td class="tr neg">\u2212'+fmt(d.totalExp)+'</td><td class="muted">all classified transactions</td><td></td></tr>';
+    fixedItems.forEach(function(x){
+      var statusText=x.seen
+        ?(x.manualState==='paid'?'marked paid manually':(x.autoSeen?'found in transactions':'marked paid manually'))
+        :(x.autoSeen?'found but overridden':'not yet seen');
+      var statusColor=x.seen?'color:var(--green)':'color:var(--amber)';
+      var toggleBtn=x.seen
+        ?'<button onclick="setFixedPaid(\''+x.key+'\',\'pending\')" style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--border2);background:var(--surface);cursor:pointer;color:var(--text2)">Mark pending</button>'
+        :'<button onclick="setFixedPaid(\''+x.key+'\',\'paid\')" style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--green-bd);background:var(--green-bg);cursor:pointer;color:var(--green)">Mark paid</button>';
+      h+='<tr><td>'+x.label+(x.seen?'':' <span class="pill pill-amb">pending</span>')+'</td>'
+        +'<td class="tr '+(x.seen?'muted':'neg')+'">'+(x.seen?'\u2014':'\u2212'+fmt(x.amount))+'</td>'
+        +'<td style="font-size:12px;'+statusColor+'">'+statusText+'</td>'
+        +'<td style="text-align:right;white-space:nowrap">'+toggleBtn+'</td></tr>';
+    });
+    var bufferDrawn=d.allInternals.filter(function(_,i){return transferState[i]==='buffer';}).reduce(function(s,t,i){return s+(d.allInternals[i].inn||d.allInternals[i].ut);},0);
+    if(bufferDrawn>0){
+      h+='<tr><td>Buffer drawdown <span class="pill" style="background:#eef4fc;color:#185fa5;border:1px solid #b8d4f0">financing</span></td><td class="tr" style="color:#185fa5">+'+fmt(bufferDrawn)+'</td><td class="muted">from buffer account</td><td></td></tr>';
     }
-    h+='<tr style="border-top:2px solid var(--border2)"><td class="bold">Headroom remaining</td><td class="tr bold '+headroomColor+'">'+(headroom>=0?'+':'')+fmt(headroom)+'</td><td class="muted">before hitting zero</td></tr>';
+    h+='<tr style="border-top:2px solid var(--border2)"><td class="bold">Headroom remaining</td><td class="tr bold '+headroomColor+'">'+(headroom>=0?'+':'')+fmt(headroom)+'</td><td class="muted">before hitting zero</td><td></td></tr>';
     h+='</table></div>';
     if(!salaryReceived){
       h+='<div style="margin-top:10px;font-size:12px;color:var(--amber);padding:8px 12px;background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:var(--r);">Salary not yet received \u2014 using 55\u202F697\u202Fkr \u00d7 2 as expected income. Once salary transfers appear, mark them as \u201cSalary in\u201d in the transfers panel.</div>';
@@ -724,8 +765,7 @@ function render(d){
   h+='<div class="section no-print" id="transferSection">';
   h+='<div class="section-title" style="cursor:pointer" onclick="toggleTransfers()">Internal transfers <span class="hint">\u00b7 '+internals.length+' total \u00b7 '+incCount+' salary \u00b7 click to '+(transfersCollapsed?'expand':'collapse')+'</span></div>';
   h+='<div id="transferBody" style="display:'+(transfersCollapsed?'none':'block')+'">';
-  var bufCount=internals.filter(function(_,i){return transferState[i]==='buffer';}).length;
-  h+='<div class="transfer-summary"><span>'+internals.length+' total</span><span class="pos">'+incCount+' salary</span>'+(bufCount>0?'<span style="color:#185fa5">'+bufCount+' buffer</span>':'')+'<span class="muted">'+(internals.length-incCount-skipCount-bufCount)+' excluded</span>'+(skipCount>0?'<span style="color:var(--red)">'+skipCount+' other month</span>':'')+'</div><div class="transfers-list">'+internals.map(function(t,i){var state=transferState[i]||'excluded',amount=t.ut>0?t.ut:t.inn,dir=t.ut>0?'outgoing':'incoming',sl=state==='income'?'<span class="ts ts-in">salary</span>':state==='other'?'<span class="ts ts-ot">other month</span>':state==='buffer'?'<span class="ts ts-buf">buffer</span>':'<span class="ts ts-ex">excluded</span>';return'<div class="transfer-card"><div class="transfer-info"><div class="transfer-desc">'+t.desc+'</div><div class="transfer-meta">'+t.date+' \u00b7 '+dir+'</div></div><div class="transfer-amount">'+fmt(amount)+'</div>'+sl+'<div class="transfer-actions"><button class="tbtn '+(state==='income'?'active-salary':'')+'" onclick="setTransfer('+i+',\'income\')">Salary in</button><button class="tbtn '+(state==='buffer'?'active-buffer':'')+'" onclick="setTransfer('+i+',\'buffer\')">Buffer</button><button class="tbtn '+(state==='excluded'?'active-excluded':'')+'" onclick="setTransfer('+i+',\'excluded\')">Exclude</button><button class="tbtn '+(state==='other'?'active-other':'')+'" onclick="setTransfer('+i+',\'other\')">Other month</button></div></div>';}).join('')+'</div>';
+  h+='<div class="transfer-summary"><span>'+internals.length+' total</span><span class="pos">'+incCount+' salary</span><span class="muted">'+(internals.length-incCount-skipCount)+' excluded</span>'+(skipCount>0?'<span style="color:var(--red)">'+skipCount+' other month</span>':'')+'</div><div class="transfers-list">'+internals.map(function(t,i){var state=transferState[i]||'excluded',amount=t.ut>0?t.ut:t.inn,dir=t.ut>0?'outgoing':'incoming',sl=state==='income'?'<span class="ts ts-in">salary</span>':state==='other'?'<span class="ts ts-ot">other month</span>':'<span class="ts ts-ex">excluded</span>';return'<div class="transfer-card"><div class="transfer-info"><div class="transfer-desc">'+t.desc+'</div><div class="transfer-meta">'+t.date+' \u00b7 '+dir+'</div></div><div class="transfer-amount">'+fmt(amount)+'</div>'+sl+'<div class="transfer-actions"><button class="tbtn '+(state==='income'?'active-salary':'')+'" onclick="setTransfer('+i+',\'income\')">Salary in</button><button class="tbtn '+(state==='excluded'?'active-excluded':'')+'" onclick="setTransfer('+i+',\'excluded\')">Exclude</button><button class="tbtn '+(state==='other'?'active-other':'')+'" onclick="setTransfer('+i+',\'other\')">Other month</button></div></div>';}).join('')+'</div>';
   h+='</div></div>';
 
   h+='<div class="section no-print" id="rulesSection"><div class="section-title">Custom rules <span class="hint">\u00b7 synced to GitHub \u00b7 shared with all users</span></div><div class="rules-panel">'+(CUSTOM_RULES.length===0?'<div class="no-rules">No custom rules yet. Use "+Rule" when classifying an unclassified transaction.</div>':CUSTOM_RULES.map(function(r,i){return'<div class="rule-row"><span class="rule-kw">"'+r.v+'"</span><span class="rule-cat">\u2192 '+r.cat+'</span><button class="rule-del" onclick="deleteCustomRule('+i+')">Delete</button></div>';}).join(''))+'</div></div>';
@@ -755,6 +795,7 @@ function render(d){
   h+='</div></div></div>';
 
   document.getElementById('report').innerHTML=h;
+  restoreOpenDrills();
   renderCatPanel();
 }
 
