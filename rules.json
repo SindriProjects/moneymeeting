@@ -254,6 +254,11 @@
       "m": "contains",
       "v": "kvitfjell hotel",
       "cat": "Travel"
+    },
+    {
+      "m": "contains",
+      "v": "kvitfjell alpin",
+      "cat": "Travel"
     }
   ],
   "categories": [
