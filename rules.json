@@ -224,6 +224,11 @@
       "m": "contains",
       "v": "joker briskeby",
       "cat": "Groceries"
+    },
+    {
+      "m": "contains",
+      "v": "www.apcoa.no",
+      "cat": "Transport"
     }
   ],
   "categories": [
