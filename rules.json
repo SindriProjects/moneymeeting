@@ -189,6 +189,11 @@
       "m": "contains",
       "v": "klarna:dressmykid.no",
       "cat": "Barneutgifter"
+    },
+    {
+      "m": "contains",
+      "v": "ark solli plass",
+      "cat": "Books"
     }
   ],
   "categories": [
