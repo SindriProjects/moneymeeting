@@ -259,6 +259,11 @@
       "m": "contains",
       "v": "kvitfjell alpin",
       "cat": "Travel"
+    },
+    {
+      "m": "contains",
+      "v": "zettle_:voice music fr",
+      "cat": "Travel"
     }
   ],
   "categories": [
