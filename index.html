@@ -85,6 +85,10 @@ tr:last-child td{border-bottom:none;}
 .ts-ex{background:var(--surface2);color:var(--text3);border:1px solid var(--border);}
 .ts-ot{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);}
 .ts-buf{background:#eef4fc;color:#185fa5;border:1px solid #b8d4f0;}
+.section-title.collapsible{cursor:pointer;user-select:none;}
+.section-title.collapsible::after{content:'\25BC';font-size:8px;margin-left:auto;transition:transform .2s;display:inline-block;}
+.section-title.collapsible.collapsed::after{transform:rotate(-90deg);}
+.section-body{overflow:hidden;}
 .transfer-summary{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 16px;font-size:12px;color:var(--text2);display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px;}
 .misc-all-done{background:var(--green-bg);border:1px solid var(--green-bd);border-radius:var(--r);padding:14px 16px;font-size:13px;color:var(--green);text-align:center;font-weight:500;}
 .rules-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;}
@@ -265,7 +269,7 @@ const BASE_RULES=[
 ];
 
 const BUDGET_VAR={Groceries:15000,Transport:4000,Cleaning:3840,Childcare:2640,Subscriptions:2000};
-const BUDGET_FIXED={'Housing (fixed costs)':40261};
+const BUDGET_FIXED={'Fixed costs — budgeted':40261};
 
 function ghHeaders(){return{'Authorization':'Bearer '+ghToken,'Accept':'application/vnd.github+json','Content-Type':'application/json'};}
 async function ghLoad(){
@@ -430,6 +434,21 @@ function doUndo(){
 
 function makeDrillId(cat){return'drill_'+cat.replace(/[^a-zA-Z0-9]/g,'_');}
 window._openDrills=window._openDrills||{};
+window._collapsedSections=window._collapsedSections||{};
+function toggleSection(id){
+  window._collapsedSections[id]=!window._collapsedSections[id];
+  var body=document.getElementById(id+'_body');
+  var title=document.getElementById(id+'_title');
+  if(body)body.style.display=window._collapsedSections[id]?'none':'block';
+  if(title)title.classList.toggle('collapsed',!!window._collapsedSections[id]);
+}
+function sectionWrap(id,titleHtml,bodyHtml){
+  var collapsed=!!window._collapsedSections[id];
+  return'<div class="section">'
+    +'<div class="section-title collapsible'+(collapsed?' collapsed':'')+'" id="'+id+'_title" onclick="toggleSection(''+id+'')" >'+titleHtml+'</div>'
+    +'<div id="'+id+'_body" style="display:'+(collapsed?'none':'block')+'">'+bodyHtml+'</div>'
+    +'</div>';
+}
 function toggleDrill(cat){
   var id=makeDrillId(cat);toggleDrillById(id);
 }
@@ -625,17 +644,17 @@ function render(d){
     return'<tr class="clickable-row" id="tr_'+did+'" onclick="toggleDrillById(\''+did+'\')"><td>'+(isBuf?'<span style="color:#185fa5">'+label+'</span>':label)+'</td><td class="tr"'+(isBuf?' style="color:#185fa5"':'')+'>'+fmt(total)+'</td></tr>'
       +'<tr class="drill-row" id="'+did+'" style="display:none"><td colspan="2"><div class="drill-inner"><table>'+drows+'</table></div></td></tr>';
   }).join('');
-  h+='<div class="section"><div class="section-title">Income <span class="hint">\u00b7 click to expand</span></div><div class="table-wrap"><table><tr><th>Source</th><th class="tr">Amount</th></tr>'+incomeRows+'<tr><td class="bold">Real income (excl. buffer)</td><td class="tr bold">'+fmt(realIncome)+'</td></tr></table></div></div>';
+  h+=sectionWrap('sec_income','Income <span class="hint">\u00b7 click rows to expand</span>','<div class="table-wrap"><table><tr><th>Source</th><th class="tr">Amount</th></tr>'+incomeRows+'<tr><td class="bold">Real income (excl. buffer)</td><td class="tr bold">'+fmt(realIncome)+'</td></tr></table></div>');
 
-  h+='<div class="section"><div class="section-title">Variable costs \u2014 budgeted <span class="hint">\u00b7 click to expand</span></div><div class="table-wrap"><table><tr><th>Category</th><th class="tr">Budget</th><th class="tr">Actual</th><th class="tr">Variance</th></tr>'+d.varRows.map(function(r){return makeClickableRow(r.cat,[r.cat+(r.actual>r.budget?'<span class="pill pill-red">over</span>':''),'<span class="muted">'+fmt(r.budget)+'</span>',fmt(r.actual),varCell(r.actual,r.budget)],d.byCategory[r.cat]||[]);}).join('')+'</table></div></div>';
+  h+=sectionWrap('sec_var','Variable costs \u2014 budgeted <span class="hint">\u00b7 click to expand</span>','<div class="table-wrap"><table><tr><th>Category</th><th class="tr">Budget</th><th class="tr">Actual</th><th class="tr">Variance</th></tr>'+d.varRows.map(function(r){return makeClickableRow(r.cat,[r.cat+(r.actual>r.budget?'<span class="pill pill-red">over</span>':''),'<span class="muted">'+fmt(r.budget)+'</span>',fmt(r.actual),varCell(r.actual,r.budget)],d.byCategory[r.cat]||[]);}).join('')+'</table></div>');
 
-  h+='<div class="section"><div class="section-title">Fixed costs \u2014 budgeted <span class="hint">\u00b7 click to expand</span></div><div class="table-wrap"><table><tr><th>Category</th><th class="tr">Budget</th><th class="tr">Actual</th><th class="tr">Variance</th></tr>'+d.fixedRows.map(function(r){return makeClickableRow(r.cat,[r.cat+(r.actual>r.budget?'<span class="pill pill-red">over</span>':r.actual===0?'<span class="pill pill-amb">not seen</span>':''),'<span class="muted">'+fmt(r.budget)+'</span>',fmt(r.actual),varCell(r.actual,r.budget)],d.byCategory['Housing']||[]);}).join('')+'</table></div></div>';
+  h+=sectionWrap('sec_fixed','Fixed costs \u2014 budgeted <span class="hint">\u00b7 click to expand</span>','<div class="table-wrap"><table><tr><th>Category</th><th class="tr">Budget</th><th class="tr">Actual</th><th class="tr">Variance</th></tr>'+d.fixedRows.map(function(r){return makeClickableRow(r.cat,[r.cat+(r.actual>r.budget?'<span class="pill pill-red">over</span>':r.actual===0?'<span class="pill pill-amb">not seen</span>':''),'<span class="muted">'+fmt(r.budget)+'</span>',fmt(r.actual),varCell(r.actual,r.budget)],d.byCategory['Housing']||[]);}).join('')+'</table></div>');
 
   if(d.nonBudgeted.length>0){
     var nbTotal=d.nonBudgeted.reduce(function(s,item){return s+item[1].reduce(function(ss,t){return ss+t.amount;},0);},0);
     var nbWithoutMisc=d.nonBudgeted.filter(function(item){return item[0]!=='Misc';});
     var nbTotalWithoutMisc=nbWithoutMisc.reduce(function(s,item){return s+item[1].reduce(function(ss,t){return ss+t.amount;},0);},0);
-    h+='<div class="section"><div class="section-title">Non-budgeted expenses <span class="hint">\u00b7 click to expand \u00b7 total: '+fmt(nbTotalWithoutMisc)+'</span></div><div class="table-wrap"><table><tr><th>Category</th><th class="tr">Transactions</th><th class="tr">Total</th></tr>'+nbWithoutMisc.map(function(item){var cat=item[0],ts=item[1],total=ts.reduce(function(s,t){return s+t.amount;},0);return makeClickableRow(cat+'_nb',[cat+(ts.some(function(t){return t.amount>2000;})?'<span class="pill pill-amb">notable</span>':''),'<span class="muted">'+ts.length+'</span>',fmt(total)],ts);}).join('')+'<tr><td class="bold" colspan="2">Total</td><td class="tr bold">'+fmt(nbTotalWithoutMisc)+'</td></tr></table></div></div>';
+    h+=sectionWrap('sec_nonbudget','Non-budgeted expenses <span class="hint">\u00b7 click rows to expand \u00b7 total: '+fmt(nbTotalWithoutMisc)+'</span>','<div class="table-wrap"><table><tr><th>Category</th><th class="tr">Transactions</th><th class="tr">Total</th></tr>'+nbWithoutMisc.map(function(item){var cat=item[0],ts=item[1],total=ts.reduce(function(s,t){return s+t.amount;},0);return makeClickableRow(cat+'_nb',[cat+(ts.some(function(t){return t.amount>2000;})?'<span class="pill pill-amb">notable</span>':''),'<span class="muted">'+ts.length+'</span>',fmt(total)],ts);}).join('')+'<tr><td class="bold" colspan="2">Total</td><td class="tr bold">'+fmt(nbTotalWithoutMisc)+'</td></tr></table></div>');
   }
 
   if(d.isPartial){
@@ -668,12 +687,7 @@ function render(d){
     var rate=d.daysInMonth/d.daysElapsed,projExp=d.totalExp*rate;
     var totalBudget=d.varRows.reduce(function(s,r){return s+r.budget;},0)+d.fixedRows.reduce(function(s,r){return s+r.budget;},0);
     var projNet=effectiveIncome-projExp;
-    h+='<div class="section"><div class="section-title">Projection \u2014 '+d.daysElapsed+' of '+d.daysInMonth+' days elapsed</div>';
-    h+='<div class="metrics">';
-    h+='<div class="metric"><div class="metric-label">Projected expenses</div><div class="metric-value">'+fmt(projExp)+'</div></div>';
-    h+='<div class="metric"><div class="metric-label">'+(salaryReceived?'Actual income':'Expected income')+'</div><div class="metric-value pos">'+fmt(effectiveIncome)+(salaryReceived?'':' <span style="font-size:11px;font-weight:400;color:var(--amber)">est.</span>')+'</div></div>';
-    h+='<div class="metric"><div class="metric-label">Projected net</div><div class="metric-value '+(projNet>=0?'pos':'neg')+'">'+(projNet>=0?'+':'')+fmt(projNet)+'</div></div>';
-    h+='</div></div>';
+    h+=sectionWrap('sec_projection','Projection \u2014 '+d.daysElapsed+' of '+d.daysInMonth+' days elapsed','<div class="metrics"><div class="metric"><div class="metric-label">Projected expenses</div><div class="metric-value">'+fmt(projExp)+'</div></div><div class="metric"><div class="metric-label">'+(salaryReceived?'Actual income':'Expected income')+'</div><div class="metric-value pos">'+fmt(effectiveIncome)+(salaryReceived?'':' <span style="font-size:11px;font-weight:400;color:var(--amber)">est.</span>')+'</div></div><div class="metric"><div class="metric-label">Projected net</div><div class="metric-value '+(projNet>=0?'pos':'neg')+'">'+(projNet>=0?'+':'')+fmt(projNet)+'</div></div></div>');
 
     // ── Headroom ─────────────────────────────────────────────────────────
     // Search ALL expense transactions for each fixed item (not just one category)
@@ -695,27 +709,63 @@ function render(d){
     });
     var pendingFixed=fixedItems.filter(function(x){return!x.seen;});
     var pendingFixedTotal=pendingFixed.reduce(function(s,x){return s+x.amount;},0);
-    var headroom=effectiveIncome-d.totalExp-pendingFixedTotal;
+    // Remaining variable budget (positive = still have budget left to spend)
+    var varBudgetRemaining=d.varRows.reduce(function(s,r){return s+Math.max(0,r.budget-r.actual);},0);
+    var varBudgetOver=d.varRows.reduce(function(s,r){return s+Math.max(0,r.actual-r.budget);},0);
+    var headroom=effectiveIncome-d.totalExp-pendingFixedTotal-varBudgetRemaining;
     var headroomColor=headroom>=0?'pos':'neg';
 
-    h+='<div class="section"><div class="section-title">Month-end headroom</div>';
-    h+='<div class="metrics">';
-    h+='<div class="metric"><div class="metric-label">'+(salaryReceived?'Income received':'Expected income')+'</div><div class="metric-value pos">'+fmt(effectiveIncome)+(salaryReceived?'':' <span style="font-size:11px;font-weight:400;color:var(--amber)">est.</span>')+'</div></div>';
-    h+='<div class="metric"><div class="metric-label">Spent so far</div><div class="metric-value">'+fmt(d.totalExp)+'</div></div>';
-    h+='<div class="metric"><div class="metric-label">Headroom left</div><div class="metric-value '+headroomColor+'">'+fmt(headroom)+'</div></div>';
-    h+='</div>';
-    h+='<div class="table-wrap"><table>';
-    h+='<tr><th>Item</th><th class="tr">Amount</th><th>Status</th><th></th></tr>';
+    var _headroomBody='';
+    _headroomBody+='<div class="metrics">';
+    _headroomBody+='<div class="metric"><div class="metric-label">'+(salaryReceived?'Income received':'Expected income')+'</div><div class="metric-value pos">'+fmt(effectiveIncome)+(salaryReceived?'':' <span style="font-size:11px;font-weight:400;color:var(--amber)">est.</span>')+'</div></div>';
+    _headroomBody+='<div class="metric"><div class="metric-label">Spent so far</div><div class="metric-value">'+fmt(d.totalExp)+'</div></div>';
+    _headroomBody+='<div class="metric"><div class="metric-label">Headroom left</div><div class="metric-value '+headroomColor+'">'+fmt(headroom)+'</div></div>';
+    _headroomBody+='</div>';
+
+    // ── Spend bar ──────────────────────────────────────────────────────
+    var _totalBudget=effectiveIncome;
+    var _spentPct=Math.min(d.totalExp/_totalBudget,1);
+    var _pacePct=Math.min(d.daysElapsed/d.daysInMonth,1);
+    var _overPace=_spentPct>_pacePct;
+    var _overBudget=d.totalExp>_totalBudget;
+    var _fillColor=_overBudget?'#c0392b':_overPace?'#8a5c00':'#1a7a4a';
+    var _fillBg=_overBudget?'#fdf0ee':_overPace?'#fdf6e3':'#eaf4ee';
+    _headroomBody+='<div style="margin:16px 0 20px;">'
+      +'<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;">'
+        +'<span>Spend vs income</span>'
+        +'<span>'+fmt(d.totalExp)+' of '+fmt(_totalBudget)+'</span>'
+      +'</div>'
+      +'<div style="position:relative;height:10px;background:'+_fillBg+';border-radius:6px;">'
+        +'<div style="width:'+(_spentPct*100).toFixed(1)+'%;height:100%;background:'+_fillColor+';border-radius:6px;"></div>'
+        +'<div style="position:absolute;top:-4px;left:'+(_pacePct*100).toFixed(1)+'%;width:2px;height:18px;background:var(--text);border-radius:1px;">'
+          +'<div style="position:absolute;top:20px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--text3);white-space:nowrap;">day '+d.daysElapsed+' pace</div>'
+        +'</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:16px;margin-top:28px;font-size:12px;color:var(--text2);flex-wrap:wrap;">'
+        +'<span style="display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:2px;background:'+_fillColor+';flex-shrink:0;"></span>Spent: '+(_spentPct*100).toFixed(0)+'%</span>'
+        +'<span style="display:flex;align-items:center;gap:5px;"><span style="width:2px;height:8px;border-radius:1px;background:var(--text);flex-shrink:0;"></span>Pace: '+(_pacePct*100).toFixed(0)+'% of month</span>'
+        +(headroom>=0?'<span style="display:flex;align-items:center;gap:5px;color:var(--green);">Headroom: '+fmt(headroom)+'</span>':'<span style="color:var(--red);">Over by: '+fmt(Math.abs(headroom))+'</span>')
+      +'</div>'
+    +'</div>';
+
+    _headroomBody+='<div class="table-wrap"><table>';
+    _headroomBody+='<tr><th>Item</th><th class="tr">Amount</th><th>Status</th><th></th></tr>';
     if(!salaryReceived){
-      h+='<tr><td>Salary (person 1) <span class="pill pill-amb">expected</span></td><td class="tr pos">+'+fmt(SALARY_PER_PERSON)+'</td><td class="muted">not yet received</td><td></td></tr>';
-      h+='<tr><td>Salary (person 2) <span class="pill pill-amb">expected</span></td><td class="tr pos">+'+fmt(SALARY_PER_PERSON)+'</td><td class="muted">not yet received</td><td></td></tr>';
+      _headroomBody+='<tr><td>Salary (person 1) <span class="pill pill-amb">expected</span></td><td class="tr pos">+'+fmt(SALARY_PER_PERSON)+'</td><td class="muted">not yet received</td><td></td></tr>';
+      _headroomBody+='<tr><td>Salary (person 2) <span class="pill pill-amb">expected</span></td><td class="tr pos">+'+fmt(SALARY_PER_PERSON)+'</td><td class="muted">not yet received</td><td></td></tr>';
     }else{
-      h+='<tr><td>Salary received</td><td class="tr pos">+'+fmt(salaryActual)+'</td><td class="muted">seen in file</td><td></td></tr>';
+      _headroomBody+='<tr><td>Salary received</td><td class="tr pos">+'+fmt(salaryActual)+'</td><td class="muted">seen in file</td><td></td></tr>';
     }
     if(otherIncome>0){
-      h+='<tr><td>Other income</td><td class="tr pos">+'+fmt(otherIncome)+'</td><td class="muted">seen in file</td><td></td></tr>';
+      _headroomBody+='<tr><td>Other income</td><td class="tr pos">+'+fmt(otherIncome)+'</td><td class="muted">seen in file</td><td></td></tr>';
     }
-    h+='<tr><td>Expenses so far</td><td class="tr neg">\u2212'+fmt(d.totalExp)+'</td><td class="muted">all classified transactions</td><td></td></tr>';
+    _headroomBody+='<tr><td>Expenses so far</td><td class="tr neg">\u2212'+fmt(d.totalExp)+'</td><td class="muted">all classified transactions</td><td></td></tr>';
+    if(varBudgetRemaining>0){
+      _headroomBody+='<tr><td>Variable budget remaining <span class="pill pill-amb">to spend</span></td><td class="tr neg">\u2212'+fmt(varBudgetRemaining)+'</td><td class="muted">unspent variable budget</td><td></td></tr>';
+    }
+    if(varBudgetOver>0){
+      _headroomBody+='<tr><td>Variable budget overrun</td><td class="tr neg">\u2212'+fmt(varBudgetOver)+'</td><td class="muted">already over budget</td><td></td></tr>';
+    }
     fixedItems.forEach(function(x){
       var statusText=x.seen
         ?(x.manualState==='paid'?'marked paid manually':(x.autoSeen?'found in transactions':'marked paid manually'))
@@ -724,43 +774,41 @@ function render(d){
       var toggleBtn=x.seen
         ?'<button onclick="setFixedPaid(\''+x.key+'\',\'pending\')" style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--border2);background:var(--surface);cursor:pointer;color:var(--text2)">Mark pending</button>'
         :'<button onclick="setFixedPaid(\''+x.key+'\',\'paid\')" style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--green-bd);background:var(--green-bg);cursor:pointer;color:var(--green)">Mark paid</button>';
-      h+='<tr><td>'+x.label+(x.seen?'':' <span class="pill pill-amb">pending</span>')+'</td>'
+      _headroomBody+='<tr><td>'+x.label+(x.seen?'':' <span class="pill pill-amb">pending</span>')+'</td>'
         +'<td class="tr '+(x.seen?'muted':'neg')+'">'+(x.seen?'\u2014':'\u2212'+fmt(x.amount))+'</td>'
         +'<td style="font-size:12px;'+statusColor+'">'+statusText+'</td>'
         +'<td style="text-align:right;white-space:nowrap">'+toggleBtn+'</td></tr>';
     });
     var bufferDrawn=d.allInternals.filter(function(_,i){return transferState[i]==='buffer';}).reduce(function(s,t,i){return s+(d.allInternals[i].inn||d.allInternals[i].ut);},0);
     if(bufferDrawn>0){
-      h+='<tr><td>Buffer drawdown <span class="pill" style="background:#eef4fc;color:#185fa5;border:1px solid #b8d4f0">financing</span></td><td class="tr" style="color:#185fa5">+'+fmt(bufferDrawn)+'</td><td class="muted">from buffer account</td><td></td></tr>';
+      _headroomBody+='<tr><td>Buffer drawdown <span class="pill" style="background:#eef4fc;color:#185fa5;border:1px solid #b8d4f0">financing</span></td><td class="tr" style="color:#185fa5">+'+fmt(bufferDrawn)+'</td><td class="muted">from buffer account</td><td></td></tr>';
     }
-    h+='<tr style="border-top:2px solid var(--border2)"><td class="bold">Headroom remaining</td><td class="tr bold '+headroomColor+'">'+(headroom>=0?'+':'')+fmt(headroom)+'</td><td class="muted">before hitting zero</td><td></td></tr>';
-    h+='</table></div>';
+    _headroomBody+='<tr style="border-top:2px solid var(--border2)"><td class="bold">Headroom remaining</td><td class="tr bold '+headroomColor+'">'+(headroom>=0?'+':'')+fmt(headroom)+'</td><td class="muted">before hitting zero</td><td></td></tr>';
+    _headroomBody+='</table></div>';
     if(!salaryReceived){
-      h+='<div style="margin-top:10px;font-size:12px;color:var(--amber);padding:8px 12px;background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:var(--r);">Salary not yet received \u2014 using 55\u202F697\u202Fkr \u00d7 2 as expected income. Once salary transfers appear, mark them as \u201cSalary in\u201d in the transfers panel.</div>';
+      _headroomBody+='<div style="margin-top:10px;font-size:12px;color:var(--amber);padding:8px 12px;background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:var(--r);">Salary not yet received \u2014 using 55\u202F697\u202Fkr \u00d7 2 as expected income. Once salary transfers appear, mark them as \u201cSalary in\u201d in the transfers panel.</div>';
     }
-    h+='</div>';
+    h+=sectionWrap('sec_headroom','Month-end headroom',_headroomBody);
   }
 
   // Misc — with total
   var miscTxs=d.byCategory['Misc']||[];
   var miscTotal=miscTxs.reduce(function(s,t){return s+t.amount;},0);
-  h+='<div class="section"><div class="section-title">Unclassified (Misc) <span class="hint">\u00b7 '+miscTxs.length+' remaining'+(miscTxs.length>0?' \u00b7 '+fmt(miscTotal):'')+'</span></div>';
-  if(miscTxs.length===0){
-    h+='<div class="misc-all-done">All transactions classified</div>';
-  }else{
-    h+='<div id="miscInteractive" class="no-print"><div class="table-wrap"><table><tr><th>Date</th><th>Description</th><th class="tr">Amount</th><th class="tr">Action</th></tr>'+miscTxs.map(function(t,i){return'<tr><td style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text3)">'+t.date+'</td><td>'+t.desc+'</td><td class="tr">'+fmt(t.amount)+'</td><td class="tr" style="white-space:nowrap"><select id="msel_'+i+'" style="font-family:\'DM Sans\',sans-serif;font-size:11px;padding:3px 6px;border-radius:4px;border:1px solid var(--border2);background:var(--surface);color:var(--text)">'+CATEGORIES.filter(function(c){return c!=='Misc';}).map(function(c){return'<option>'+c+'</option>';}).join('')+'</select><button class="reclass-btn" onclick="classifyMisc('+i+',false)">Once</button><button class="reclass-btn" onclick="classifyMisc('+i+',true)">+Rule</button><button class="reclass-btn omit" onclick="omitMisc('+i+')">Other month</button></td></tr>';}).join('')+'<tr><td colspan="2" class="bold">Total</td><td class="tr bold">'+fmt(miscTotal)+'</td><td></td></tr></table></div></div>';
-    h+='<div id="miscPrintTable"><div class="table-wrap"><table><tr><th>Date</th><th>Description</th><th class="tr">Amount</th></tr>'+miscTxs.map(function(t){return'<tr><td style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text3)">'+t.date+'</td><td>'+t.desc+'</td><td class="tr">'+fmt(t.amount)+'</td></tr>';}).join('')+'<tr><td colspan="2" class="bold">Total</td><td class="tr bold">'+fmt(miscTotal)+'</td></tr></table></div></div>';
-  }
-  h+='</div>';
+  var _miscBody=miscTxs.length===0
+    ?'<div class="misc-all-done">All transactions classified</div>'
+    :'<div id="miscInteractive" class="no-print"><div class="table-wrap"><table><tr><th>Date</th><th>Description</th><th class="tr">Amount</th><th class="tr">Action</th></tr>'+miscTxs.map(function(t,i){return'<tr><td style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text3)">'+t.date+'</td><td>'+t.desc+'</td><td class="tr">'+fmt(t.amount)+'</td><td class="tr" style="white-space:nowrap"><select id="msel_'+i+'" style="font-family:\'DM Sans\',sans-serif;font-size:11px;padding:3px 6px;border-radius:4px;border:1px solid var(--border2);background:var(--surface);color:var(--text)">'+CATEGORIES.filter(function(c){return c!=='Misc';}).map(function(c){return'<option>'+c+'</option>';}).join('')+'</select><button class="reclass-btn" onclick="classifyMisc('+i+',false)">Once</button><button class="reclass-btn" onclick="classifyMisc('+i+',true)">+Rule</button><button class="reclass-btn omit" onclick="omitMisc('+i+')">Other month</button></td></tr>';}).join('')+'<tr><td colspan="2" class="bold">Total</td><td class="tr bold">'+fmt(miscTotal)+'</td><td></td></tr></table></div></div>'
+    +'<div id="miscPrintTable"><div class="table-wrap"><table><tr><th>Date</th><th>Description</th><th class="tr">Amount</th></tr>'+miscTxs.map(function(t){return'<tr><td style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text3)">'+t.date+'</td><td>'+t.desc+'</td><td class="tr">'+fmt(t.amount)+'</td></tr>';}).join('')+'<tr><td colspan="2" class="bold">Total</td><td class="tr bold">'+fmt(miscTotal)+'</td></tr></table></div></div>';
+  h+=sectionWrap('sec_misc','Unclassified (Misc) <span class="hint">\u00b7 '+miscTxs.length+' remaining'+(miscTxs.length>0?' \u00b7 '+fmt(miscTotal):'')+'</span>',_miscBody);
 
   // Manual expenses — shown in print too
   if(manualExpenses.length>0){
-    h+='<div class="section" id="manualPrintSection"><div class="section-title">Manually added expenses</div><div class="table-wrap"><table><tr><th>Date</th><th>Description</th><th>Category</th><th class="tr">Amount</th></tr>';
+    var _manBody='<div class="table-wrap"><table><tr><th>Date</th><th>Description</th><th>Category</th><th class="tr">Amount</th></tr>';
     manualExpenses.forEach(function(e){
-      h+='<tr><td style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text3)">'+e.date+'</td><td>'+e.desc+'</td><td class="muted">'+e.cat+'</td><td class="tr">'+fmt(e.amount)+'</td></tr>';
+      _manBody+='<tr><td style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text3)">'+e.date+'</td><td>'+e.desc+'</td><td class="muted">'+e.cat+'</td><td class="tr">'+fmt(e.amount)+'</td></tr>';
     });
-    h+='<tr><td colspan="3" class="bold">Total</td><td class="tr bold">'+fmt(manualExpenses.reduce(function(s,e){return s+e.amount;},0))+'</td></tr>';
-    h+='</table></div></div>';
+    _manBody+='<tr><td colspan="3" class="bold">Total</td><td class="tr bold">'+fmt(manualExpenses.reduce(function(s,e){return s+e.amount;},0))+'</td></tr>';
+    _manBody+='</table></div>';
+    h+=sectionWrap('sec_manual','Manually added expenses',_manBody);
   }
 
   // Transfers — collapsible
@@ -784,7 +832,7 @@ function render(d){
   if(manualExpenses.length>0){
     h+='<div class="table-wrap" style="margin-bottom:12px"><table><tr><th>Date</th><th>Description</th><th>Category</th><th class="tr">Amount</th><th></th></tr>';
     manualExpenses.forEach(function(e){
-      h+='<tr><td style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text3)">'+e.date+'</td><td>'+e.desc+'</td><td class="muted">'+e.cat+'</td><td class="tr bold">'+fmt(e.amount)+'</td><td style="text-align:right"><button class="reclass-btn omit" onclick="removeManualExpense(\''+e.uid+'\')">Remove</button></td></tr>';
+      _manBody+='<tr><td style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text3)">'+e.date+'</td><td>'+e.desc+'</td><td class="muted">'+e.cat+'</td><td class="tr bold">'+fmt(e.amount)+'</td><td style="text-align:right"><button class="reclass-btn omit" onclick="removeManualExpense(\''+e.uid+'\')">Remove</button></td></tr>';
     });
     h+='<tr><td colspan="3" class="bold">Total</td><td class="tr bold">'+fmt(manualExpenses.reduce(function(s,e){return s+e.amount;},0))+'</td><td></td></tr>';
     h+='</table></div>';
