@@ -386,11 +386,17 @@ function analyze(raw){
 function buildReport(allInternals,baseTransactions){
   var extraIncome=allInternals.filter(function(_,i){return transferState[i]==='income';}).map(function(t){return Object.assign({},t,{cat:'INCOME_TRANSFER',isIncome:true,amount:t.inn||t.ut});});
   var allTx=baseTransactions.concat(extraIncome);
-  var expenses=[],income=allTx.filter(function(t){return t.isIncome;});
-  allTx.filter(function(t){return!t.isIncome;}).forEach(function(t){
+  var expenses=[],income=[];
+  allTx.forEach(function(t){
     var k=uid(t),ov=txOverrides[k];
-    if(ov&&ov.omit)return;
-    expenses.push(Object.assign({},t,{cat:ov?ov.cat:t.cat}));
+    if(t.isIncome){
+      if(ov&&ov.omit)return; // excluded
+      var overridden=ov&&ov.isIncome?Object.assign({},t,{cat:ov.cat||t.cat,incomeLabel:ov.incomeLabel||null}):t;
+      income.push(overridden);
+    } else {
+      if(ov&&ov.omit)return;
+      expenses.push(Object.assign({},t,{cat:ov?ov.cat:t.cat}));
+    }
   });
   // Add manual expenses
   manualExpenses.forEach(function(m){expenses.push(Object.assign({},m,{isIncome:false,isManual:true}));});
