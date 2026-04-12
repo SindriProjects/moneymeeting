@@ -209,6 +209,11 @@
       "m": "contains",
       "v": "joker briskeby",
       "cat": "Groceries"
+    },
+    {
+      "m": "contains",
+      "v": "statens lånekasse for",
+      "cat": "Housing"
     }
   ],
   "categories": [
