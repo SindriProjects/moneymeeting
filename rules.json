@@ -184,6 +184,11 @@
       "m": "contains",
       "v": "beths medispa a",
       "cat": "Health & wellbeing"
+    },
+    {
+      "m": "contains",
+      "v": "klarna:dressmykid.no",
+      "cat": "Barneutgifter"
     }
   ],
   "categories": [
