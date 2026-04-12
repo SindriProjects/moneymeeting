@@ -234,6 +234,11 @@
       "m": "contains",
       "v": "kb01 theresesgt",
       "cat": "Bakeries"
+    },
+    {
+      "m": "contains",
+      "v": "alpinco as",
+      "cat": "Travel"
     }
   ],
   "categories": [
