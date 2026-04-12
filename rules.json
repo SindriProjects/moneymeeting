@@ -204,6 +204,11 @@
       "m": "contains",
       "v": "klarna:farmasiet",
       "cat": "Health & wellbeing"
+    },
+    {
+      "m": "contains",
+      "v": "joker briskeby",
+      "cat": "Groceries"
     }
   ],
   "categories": [
