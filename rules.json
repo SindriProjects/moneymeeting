@@ -249,6 +249,11 @@
       "m": "contains",
       "v": "gudbrandsgard h",
       "cat": "Travel"
+    },
+    {
+      "m": "contains",
+      "v": "kvitfjell hotel",
+      "cat": "Travel"
     }
   ],
   "categories": [
