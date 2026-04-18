@@ -269,6 +269,11 @@
       "m": "contains",
       "v": "cutters cc-vest",
       "cat": "Health & wellbeing"
+    },
+    {
+      "m": "contains",
+      "v": "godt brød there",
+      "cat": "Bakeries"
     }
   ],
   "categories": [
