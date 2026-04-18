@@ -97,6 +97,7 @@ tr:last-child td{border-bottom:none;}
 .rule-kw{flex:1;font-family:'DM Mono',monospace;font-size:12px;}
 .rule-cat{color:var(--text2);font-size:12px;min-width:150px;}
 .rule-del{font-family:'DM Sans',sans-serif;font-size:11px;padding:3px 9px;border-radius:4px;border:1px solid var(--red-bd);color:var(--red);background:transparent;cursor:pointer;}
+.restore-btn{font-family:'DM Sans',sans-serif;font-size:11px;padding:3px 9px;border-radius:4px;border:1px solid var(--green-bd);color:var(--green);background:var(--green-bg);cursor:pointer;}
 .rule-del:hover{background:var(--red-bg);}
 .no-rules{padding:16px;font-size:13px;color:var(--text3);}
 .cat-grid{display:flex;flex-wrap:wrap;gap:8px;}
@@ -339,12 +340,34 @@ window.addEventListener('load',async function(){
 });
 
 function getRules(){return CUSTOM_RULES.concat(BASE_RULES);}
+function normaliseNO(s){
+  // Normalise common Norwegian character encoding variants
+  return s
+    .replace(/æ/g,'ae').replace(/Æ/g,'ae')
+    .replace(/ø/g,'o').replace(/Ø/g,'o')
+    .replace(/å/g,'a').replace(/Å/g,'a')
+    .replace(/ä/g,'a').replace(/ö/g,'o')  // Swedish variants too
+    .replace(/ae/g,'ae');
+}
+function toMatchStr(s){
+  // Return both original lowercased and normalised version for matching
+  return s.toLowerCase();
+}
+function matchRule(desc, ruleVal){
+  var d=desc.toLowerCase();
+  var v=ruleVal.toLowerCase();
+  // Try direct match first
+  if(d.indexOf(v)>=0) return true;
+  // Try normalised match (handles æøå encoding differences)
+  if(normaliseNO(d).indexOf(normaliseNO(v))>=0) return true;
+  return false;
+}
 function classify(desc){
   var d=desc.toLowerCase();
   for(var i=0;i<getRules().length;i++){
     var r=getRules()[i];
-    if(r.m==='contains'&&d.indexOf(r.v)>=0)return r.cat;
-    if(r.m==='regex'&&new RegExp(r.v,'i').test(d))return r.cat;
+    if(r.m==='contains'&&matchRule(d,r.v))return r.cat;
+    if(r.m==='regex'&&(new RegExp(r.v,'iu').test(d)||new RegExp(r.v,'iu').test(normaliseNO(d))))return r.cat;
   }
   return 'Misc';
 }
@@ -1009,6 +1032,34 @@ function render(d){
     h+=sectionWrap('sec_manual','Manually added expenses',_manBody);
   }
 
+  // Removed transactions section
+  var removedTxs=[];
+  if(lastReport&&lastReport.baseTransactions){
+    // Check all base transactions (expenses + income) for omitted ones
+    lastReport.baseTransactions.forEach(function(t){
+      var k=uid(t),ov=txOverrides[k];
+      if(ov&&ov.omit) removedTxs.push(t);
+    });
+    // Also check allInternals marked as 'other' month
+    (lastReport.allInternals||[]).forEach(function(t){
+      var k=uid(t);
+      if(transferState[k]==='other') removedTxs.push(Object.assign({},t,{_isTransfer:true}));
+    });
+  }
+  if(removedTxs.length>0){
+    var removedBody='<div class="table-wrap"><table><tr><th>Date</th><th>Description</th><th class="tr">Amount</th><th></th></tr>';
+    removedTxs.sort(function(a,b){return b.amount-a.amount;}).forEach(function(t){
+      var k=uid(t);
+      removedBody+='<tr><td class="muted" style="font-family:'DM Mono',monospace;font-size:11px">'+t.date+'</td>'
+        +'<td>'+t.desc+'</td>'
+        +'<td class="tr">'+fmt(t.amount)+'</td>'
+        +'<td style="text-align:right"><button class="restore-btn" data-restore-uid="'+k+'" data-restore-transfer="'+(t._isTransfer?'1':'0')+'">Restore</button></td>'
+        +'</tr>';
+    });
+    removedBody+='</table></div>';
+    h+=sectionWrap('sec_removed','Removed transactions <span class="hint">\u00b7 '+removedTxs.length+' removed \u00b7 click to restore</span>',removedBody);
+  }
+
   // Transfers — collapsible
   var internals=d.allInternals;
   var incCount=internals.filter(function(t){return transferState[uid(t)]==='income';}).length;
@@ -1043,7 +1094,7 @@ function render(d){
   }).join('')+'</div>';
   h+='</div></div>';
 
-  h+='<div class="section no-print" id="rulesSection"><div class="section-title">Custom rules <span class="hint">\u00b7 synced to GitHub \u00b7 shared with all users</span></div><div class="rules-panel">'+(CUSTOM_RULES.length===0?'<div class="no-rules">No custom rules yet. Use "+Rule" when classifying an unclassified transaction.</div>':CUSTOM_RULES.map(function(r,i){return'<div class="rule-row"><span class="rule-kw">"'+r.v+'"</span><span class="rule-cat">\u2192 '+r.cat+'</span><button class="rule-del" onclick="deleteCustomRule('+i+')">Delete</button></div>';}).join(''))+'</div></div>';
+  h+=sectionWrap('sec_rules','Custom rules <span class="hint">\u00b7 synced to GitHub \u00b7 shared with all users</span>','<div class="rules-panel no-print">'+(CUSTOM_RULES.length===0?'<div class="no-rules">No custom rules yet.</div>':CUSTOM_RULES.map(function(r,i){return'<div class="rule-row"><span class="rule-kw">"'+r.v+'"</span><span class="rule-cat">\u2192 '+r.cat+'</span><button class="rule-del" data-rule-idx="'+i+'">Delete</button></div>';}).join(''))+'</div>');
 
   h+='<div class="section no-print" id="categoriesSection"></div>';
 
@@ -1083,6 +1134,31 @@ function render(d){
   document.querySelectorAll('[data-ts-uid]').forEach(function(el){
     el.addEventListener('click',function(){
       setTransfer(el.getAttribute('data-ts-uid'),el.getAttribute('data-ts-val'));
+    });
+  });
+  document.querySelectorAll('[data-restore-uid]').forEach(function(el){
+    el.addEventListener('click',function(){
+      var k=el.getAttribute('data-restore-uid');
+      var isTransfer=el.getAttribute('data-restore-transfer')==='1';
+      if(isTransfer){
+        // Internal transfer marked 'other month' — reset to excluded
+        var prev=transferState[k];
+        transferState[k]='excluded';
+        pushUndo('Restored transfer',function(){transferState[k]=prev;});
+      } else {
+        // Regular tx or income — delete the omit override
+        var prev=txOverrides[k]?Object.assign({},txOverrides[k]):null;
+        delete txOverrides[k];
+        pushUndo('Restored transaction',function(){if(prev)txOverrides[k]=prev;else delete txOverrides[k];});
+      }
+      saveToLocalStorage();
+      lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions);
+      render(lastReport);
+    });
+  });
+  document.querySelectorAll('[data-rule-idx]').forEach(function(el){
+    el.addEventListener('click',function(){
+      deleteCustomRule(parseInt(el.getAttribute('data-rule-idx')));
     });
   });
   // auto-save to Supabase on each render (debounced)
