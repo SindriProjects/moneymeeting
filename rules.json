@@ -274,6 +274,11 @@
       "m": "contains",
       "v": "godt brød there",
       "cat": "Bakeries"
+    },
+    {
+      "m": "contains",
+      "v": "klarna: barnashus.no",
+      "cat": "Barneutgifter"
     }
   ],
   "categories": [
