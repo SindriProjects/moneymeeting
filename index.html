@@ -999,7 +999,30 @@ function render(d){
   h+='<div class="section no-print" id="transferSection">';
   h+='<div class="section-title" style="cursor:pointer" onclick="toggleTransfers()">Internal transfers <span class="hint">\u00b7 '+internals.length+' total \u00b7 '+incCount+' salary \u00b7 click to '+(transfersCollapsed?'expand':'collapse')+'</span></div>';
   h+='<div id="transferBody" style="display:'+(transfersCollapsed?'none':'block')+'">';
-  h+='<div class="transfer-summary"><span>'+internals.length+' total</span><span class="pos">'+incCount+' salary</span><span class="muted">'+(internals.length-incCount-skipCount)+' excluded</span>'+(skipCount>0?'<span style="color:var(--red)">'+skipCount+' other month</span>':'')+'</div><div class="transfers-list">'+internals.map(function(t,i){var tuid=uid(t),state=transferState[tuid]||'excluded',amount=t.ut>0?t.ut:t.inn,dir=t.ut>0?'outgoing':'incoming',sl=state==='income'?'<span class="ts ts-in">salary</span>':state==='other'?'<span class="ts ts-ot">other month</span>':state==='buffer'?'<span class="ts ts-buf">buffer</span>':'<span class="ts ts-ex">excluded</span>';return'<div class="transfer-card"><div class="transfer-info"><div class="transfer-desc">'+t.desc+'</div><div class="transfer-meta">'+t.date+' \u00b7 '+dir+'</div></div><div class="transfer-amount">'+fmt(amount)+'</div>'+sl+'<div class="transfer-actions"><button class="tbtn '+(state==='income'?'active-salary':'')+'" onclick="setTransfer(\''+tuid+'\',\'income\')">Salary in</button><button class="tbtn '+(state==='buffer'?'active-buffer':'')+'" onclick="setTransfer(\''+tuid+'\',\'buffer\')">Buffer</button><button class="tbtn '+(state==='excluded'?'active-excluded':'')+'" onclick="setTransfer(\''+tuid+'\',\'excluded\')">Exclude</button><button cl+'" onclick="setTransfer(\''+tuid+'\',\'other\')">Other month</button></div></div>';}).join('')+'</div>';
+  h+='<div class="transfer-summary"><span>'+internals.length+' total</span><span class="pos">'+incCount+' salary</span><span class="muted">'+(internals.length-incCount-skipCount)+' excluded</span>'+(skipCount>0?'<span style="color:var(--red)">'+skipCount+' other month</span>':'')+'</div><div class="transfers-list">'+internals.map(function(t,i){
+    var tuid=uid(t);
+    var state=transferState[tuid]||'excluded';
+    var amount=t.ut>0?t.ut:t.inn;
+    var dir=t.ut>0?'outgoing':'incoming';
+    var sl=state==='income'?'<span class="ts ts-in">salary</span>'
+      :state==='other'?'<span class="ts ts-ot">other month</span>'
+      :state==='buffer'?'<span class="ts ts-buf">buffer</span>'
+      :'<span class="ts ts-ex">excluded</span>';
+    return '<div class="transfer-card">'
+      +'<div class="transfer-info">'
+        +'<div class="transfer-desc">'+t.desc+'</div>'
+        +'<div class="transfer-meta">'+t.date+' · '+dir+'</div>'
+      +'</div>'
+      +'<div class="transfer-amount">'+fmt(amount)+'</div>'
+      +sl
+      +'<div class="transfer-actions">'
+        +'<button class="tbtn '+(state==='income'?'active-salary':'')+'" data-ts-uid="'+tuid+'" data-ts-val="income">Salary in</button>'
+        +'<button class="tbtn '+(state==='buffer'?'active-buffer':'')+'" data-ts-uid="'+tuid+'" data-ts-val="buffer">Buffer</button>'
+        +'<button class="tbtn '+(state==='excluded'?'active-excluded':'')+'" data-ts-uid="'+tuid+'" data-ts-val="excluded">Exclude</button>'
+        +'<button class="tbtn '+(state==='other'?'active-other':'')+'" data-ts-uid="'+tuid+'" data-ts-val="other">Other month</button>'
+      +'</div>'
+    +'</div>';
+  }).join('')+'</div>';
   h+='</div></div>';
 
   h+='<div class="section no-print" id="rulesSection"><div class="section-title">Custom rules <span class="hint">\u00b7 synced to GitHub \u00b7 shared with all users</span></div><div class="rules-panel">'+(CUSTOM_RULES.length===0?'<div class="no-rules">No custom rules yet. Use "+Rule" when classifying an unclassified transaction.</div>':CUSTOM_RULES.map(function(r,i){return'<div class="rule-row"><span class="rule-kw">"'+r.v+'"</span><span class="rule-cat">\u2192 '+r.cat+'</span><button class="rule-del" onclick="deleteCustomRule('+i+')">Delete</button></div>';}).join(''))+'</div></div>';
@@ -1037,6 +1060,11 @@ function render(d){
   document.querySelectorAll('[data-fp-key]').forEach(function(el){
     el.addEventListener('click',function(){
       setFixedPaid(el.getAttribute('data-fp-key'),el.getAttribute('data-fp-val'));
+    });
+  });
+  document.querySelectorAll('[data-ts-uid]').forEach(function(el){
+    el.addEventListener('click',function(){
+      setTransfer(el.getAttribute('data-ts-uid'),el.getAttribute('data-ts-val'));
     });
   });
   // auto-save to Supabase on each render (debounced)
