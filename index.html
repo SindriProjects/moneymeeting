@@ -465,46 +465,69 @@ async function saveAndCloseMonth(){
 
 runBtn.addEventListener('click',function(){
   document.getElementById('err').innerHTML='';
-  (async function(){
-    try{
-      var _rawReport=analyze(csvText);
-      var _monthKey=getMonthKey(_rawReport.d1);
+  try{
+    // 1. Analyze CSV to get month key
+    var report=analyze(csvText);
+    var monthKey=getMonthKey(report.d1);
 
-      // Load existing session first
-      var session=await sbLoadSession(_monthKey);
+    // 2. Load saved state from localStorage (instant, synchronous)
+    var lsKey='mm_session_'+monthKey;
+    var saved=null;
+    try{ saved=JSON.parse(localStorage.getItem(lsKey)); }catch(e){}
 
-      if(!session){
-        // New month — start fresh
-        transferState={};txOverrides={};undoStack=[];manualExpenses=[];window._fixedPaid={};
-        console.log('[SB] New month, starting fresh');
-      } else {
-        // Existing month — restore all saved state
-        undoStack=[];
-        if(session.overrides){
-          Object.keys(session.overrides).forEach(function(k){txOverrides[k]=session.overrides[k];});
-        }
-        if(session.transfer_state){
-          Object.keys(session.transfer_state).forEach(function(k){transferState[k]=session.transfer_state[k];});
-        }
-        if(session.fixed_paid) window._fixedPaid=session.fixed_paid;
-        if(session.categories&&session.categories.length) CATEGORIES=session.categories;
-        if(session.manual_expenses&&session.manual_expenses.length) manualExpenses=session.manual_expenses;
-        console.log('[SB] Resumed, txOverrides keys:', Object.keys(txOverrides).length);
-        setSaveStatus('Resumed '+session.month_label);
-      }
-
-      // Re-analyze with restored state — new transactions get default state, existing ones keep theirs
-      var report=analyze(csvText);
-      lastReport=buildReport(report.allInternals,report.baseTransactions);
-      render(lastReport);
-      document.getElementById('printBtn').style.display='';
-      document.getElementById('saveMonthBtn').style.display='';
-    } catch(e){
-      console.error('Run error:', e);
-      document.getElementById('err').innerHTML='<div class="err-box">Error: '+e.message+'</div>';
+    if(saved){
+      // Restore all saved state before buildReport runs
+      if(saved.overrides) Object.keys(saved.overrides).forEach(function(k){txOverrides[k]=saved.overrides[k];});
+      if(saved.transferState) Object.keys(saved.transferState).forEach(function(k){transferState[k]=saved.transferState[k];});
+      if(saved.fixedPaid) window._fixedPaid=saved.fixedPaid;
+      if(saved.categories&&saved.categories.length) CATEGORIES=saved.categories;
+      if(saved.manualExpenses&&saved.manualExpenses.length) manualExpenses=saved.manualExpenses;
+      setSaveStatus('Resumed '+report.d1.toLocaleString('en-GB',{month:'long',year:'numeric'}));
+      console.log('[LS] Restored session, overrides:', Object.keys(txOverrides).length, 'transfers:', Object.keys(transferState).length);
+    } else {
+      console.log('[LS] New month, starting fresh');
     }
-  })();
+
+    // 3. Build and render — new transactions get default state, existing keep theirs
+    lastReport=buildReport(report.allInternals,report.baseTransactions);
+    render(lastReport);
+    document.getElementById('printBtn').style.display='';
+    document.getElementById('saveMonthBtn').style.display='';
+
+    // 4. Sync to Supabase in background (non-blocking)
+    sbSyncBackground(monthKey, report.d1);
+
+  } catch(e){
+    console.error('Run error:', e);
+    document.getElementById('err').innerHTML='<div class="err-box">Error: '+e.message+'</div>';
+  }
 });
+
+function saveToLocalStorage(){
+  if(!lastReport) return;
+  var monthKey=getMonthKey(lastReport.d1);
+  var lsKey='mm_session_'+monthKey;
+  var data={
+    overrides:txOverrides,
+    transferState:transferState,
+    fixedPaid:window._fixedPaid||{},
+    categories:CATEGORIES,
+    manualExpenses:manualExpenses,
+    savedAt:new Date().toISOString()
+  };
+  try{
+    localStorage.setItem(lsKey, JSON.stringify(data));
+    console.log('[LS] Saved overrides:', Object.keys(txOverrides).length, 'transfers:', Object.keys(transferState).length);
+  }catch(e){ console.warn('[LS] Save failed:', e); }
+}
+
+function sbSyncBackground(monthKey, d1){
+  // Fire-and-forget Supabase sync — doesn't block UI
+  sbSaveSession(d1, lastReport, lastReport.baseTransactions).catch(function(e){
+    console.warn('[SB] Background sync failed:', e);
+  });
+}
+
 
 function uid(t){return t.date+'|'+t.desc+'|'+t.ut+'|'+t.inn;}
 function analyze(raw){
@@ -1000,8 +1023,13 @@ function render(d){
   });
   // auto-save to Supabase on each render (debounced)
   if(lastReport){
+    // Save to localStorage immediately (synchronous, instant)
+    saveToLocalStorage();
+    // Also sync to Supabase in background
     clearTimeout(window._saveTimer);
-    window._saveTimer=setTimeout(function(){sbSaveSession(lastReport.d1,lastReport,lastReport.baseTransactions);},1500);
+    window._saveTimer=setTimeout(function(){
+      sbSyncBackground(getMonthKey(lastReport.d1), lastReport.d1);
+    },2000);
   }
 }
 
