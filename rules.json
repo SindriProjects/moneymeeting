@@ -284,6 +284,11 @@
       "m": "contains",
       "v": "volvat metodika",
       "cat": "Health & wellbeing"
+    },
+    {
+      "m": "contains",
+      "v": "statens lånekasse for",
+      "cat": "Housing"
     }
   ],
   "categories": [
