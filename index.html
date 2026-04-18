@@ -301,7 +301,12 @@ async function ghLoad(){
     const j=await r.json();ghSha=j.sha;
     const data=JSON.parse(atob(j.content.replace(/\n/g,'')));
     CUSTOM_RULES=data.rules||[];
-    if(data.categories)CATEGORIES=data.categories;
+    if(data.categories){
+      CATEGORIES=data.categories.map(function(cat){
+        // Migrate old category name
+        return cat==='Housing'?'Budgeted fixed costs':cat;
+      });
+    }
     ghConnected=true;
     setGhStatus('ok','Connected \u00b7 '+CUSTOM_RULES.length+' rule'+(CUSTOM_RULES.length!==1?'s':'')+' loaded');
   }catch(e){setGhStatus('err','Connection failed \u2014 check token');ghConnected=false;}
@@ -536,7 +541,11 @@ runBtn.addEventListener('click',function(){
         if(saved.overrides) Object.keys(saved.overrides).forEach(function(k){txOverrides[k]=saved.overrides[k];});
         if(saved.transferState) Object.keys(saved.transferState).forEach(function(k){transferState[k]=saved.transferState[k];});
         if(saved.fixedPaid) window._fixedPaid=saved.fixedPaid;
-        if(saved.categories&&saved.categories.length) CATEGORIES=saved.categories;
+        if(saved.categories&&saved.categories.length){
+        CATEGORIES=saved.categories.map(function(cat){
+          return cat==='Housing'?'Budgeted fixed costs':cat;
+        });
+      }
         if(saved.manualExpenses&&saved.manualExpenses.length) manualExpenses=saved.manualExpenses;
         setSaveStatus('Resumed '+monthLabel);
       } else {
@@ -905,8 +914,12 @@ function render(d){
     var effectiveIncome=salaryForCalc+otherIncome;
 
     // Projection — use effective income
-    var rate=d.daysInMonth/d.daysElapsed,projExp=d.totalExp*rate;
+    var rate=d.daysInMonth/d.daysElapsed;
+    // Projected expenses = prorated actual + remaining variable budget + pending fixed costs
+    var projActual=d.totalExp*rate;  // simple prorate of what's spent
     var totalBudget=d.varRows.reduce(function(s,r){return s+r.budget;},0)+d.fixedRows.reduce(function(s,r){return s+r.budget;},0);
+    // More accurate: actual spend + what's still budgeted to come
+    var projExp=d.totalExp+varBudgetRemaining+pendingFixedTotal;
     var projNet=effectiveIncome-projExp;
     h+=sectionWrap('sec_projection','Projection \u2014 '+d.daysElapsed+' of '+d.daysInMonth+' days elapsed','<div class="metrics"><div class="metric"><div class="metric-label">Projected expenses</div><div class="metric-value">'+fmt(projExp)+'</div></div><div class="metric"><div class="metric-label">'+(salaryReceived?'Actual income':'Expected income')+'</div><div class="metric-value pos">'+fmt(effectiveIncome)+(salaryReceived?'':' <span style="font-size:11px;font-weight:400;color:var(--amber)">est.</span>')+'</div></div><div class="metric"><div class="metric-label">Projected net</div><div class="metric-value '+(projNet>=0?'pos':'neg')+'">'+(projNet>=0?'+':'')+fmt(projNet)+'</div></div></div>');
 
@@ -1000,7 +1013,7 @@ function render(d){
         +'<td style="font-size:12px;'+statusColor+'">'+statusText+'</td>'
         +'<td style="text-align:right;white-space:nowrap">'+toggleBtn+'</td></tr>';
     });
-    var bufferDrawn=d.allInternals.filter(function(t){return transferState[uid(t)]==='buffer';}).reduce(function(s,t,i){return s+(d.allInternals[i].inn||d.allInternals[i].ut);},0);
+    var bufferDrawn=d.allInternals.filter(function(t){return transferState[uid(t)]==='buffer';}).reduce(function(s,t){return s+(t.inn||t.ut);},0);
     if(bufferDrawn>0){
       _headroomBody+='<tr><td>Buffer drawdown <span class="pill" style="background:#eef4fc;color:#185fa5;border:1px solid #b8d4f0">financing</span></td><td class="tr" style="color:#185fa5">+'+fmt(bufferDrawn)+'</td><td class="muted">from buffer account</td><td></td></tr>';
     }
