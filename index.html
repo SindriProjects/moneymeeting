@@ -205,7 +205,7 @@ const BASE_RULES=[
   {m:'contains',v:'sameiet og59a',cat:'Budgeted fixed costs'},
   {m:'contains',v:'homely',cat:'Budgeted fixed costs'},
   {m:'regex',v:'bolij\u00e5n|mortgage|l\u00e5n\\s+510288',cat:'Budgeted fixed costs'},
-  {m:'contains',v:'l\u00e5nekassen',cat:'Budgeted fixed costs'},
+  {m:'contains',v:'l\u00e5nekassen',cat:'Budgeted fixed costs'},{m:'contains',v:'statens l\u00e5nekasse',cat:'Budgeted fixed costs'},{m:'contains',v:'lanekassen',cat:'Budgeted fixed costs'},
   {m:'contains',v:'utdanningsetaten',cat:'Childcare'},
   {m:'contains',v:'klaudia maria',cat:'Cleaning'},
   {m:'contains',v:'klaudia',cat:'Cleaning'},
@@ -786,10 +786,10 @@ function render(d){
     var fixedItems=[
       {key:'mortgage', label:'Mortgage',amount:28000,     patterns:[/bolij/i,/mortgage/i,/l.n\s+510288/i]},
       {key:'sameiet',  label:'Sameiet OG59A',amount:4004, patterns:[/sameiet og59a/i]},
-      {key:'laan',     label:'Lånekassen',amount:3418,    patterns:[/l.nekassen/i,/lanekassen/i,/lånekassen/i]},
+      {key:'laan',     label:'Lånekassen',amount:3418,    patterns:[/l.nekassen/i,/lanekassen/i,/lånekassen/i,/statens l/i]},
       {key:'homely',   label:'Homely',amount:339,          patterns:[/homely/i]},
       {key:'unicef',   label:'Unicef',amount:500,          patterns:[/unicef/i]},
-      {key:'tjome',    label:'Tjøme',amount:1000,          patterns:[/tj.?me/i]},
+      {key:'tjome',    label:'Tjøme',amount:1000,          patterns:[/tj.?me/i,/tjøme/i]},
       {key:'proptax',  label:'Property tax',amount:500,    patterns:[/skatteetaten/i,/eiendomsskatt/i]},
       {key:'childcare',label:'Childcare (nursery)',amount:2640,patterns:[/utdanningsetaten/i,/barnehage/i]},
     ].map(function(item){
