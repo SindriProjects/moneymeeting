@@ -329,6 +329,11 @@
       "m": "contains",
       "v": "vipps*the broth compan",
       "cat": "Groceries"
+    },
+    {
+      "m": "contains",
+      "v": "klarna*polarnopyret.",
+      "cat": "Barneutgifter"
     }
   ],
   "categories": [
