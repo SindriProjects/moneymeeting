@@ -334,6 +334,11 @@
       "m": "contains",
       "v": "klarna*polarnopyret.",
       "cat": "Barneutgifter"
+    },
+    {
+      "m": "contains",
+      "v": "vipps*farmasiet as",
+      "cat": "Health & wellbeing"
     }
   ],
   "categories": [
