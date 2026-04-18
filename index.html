@@ -464,41 +464,46 @@ async function saveAndCloseMonth(){
 }
 
 runBtn.addEventListener('click',function(){
-  try{
-    // Peek at the month key from the CSV before clearing anything
-    var _peekReport=analyze(csvText);
-    var _monthKey=getMonthKey(_peekReport.d1);
+  document.getElementById('err').innerHTML='';
+  (async function(){
+    try{
+      var _rawReport=analyze(csvText);
+      var _monthKey=getMonthKey(_rawReport.d1);
 
-    // Load any existing session FIRST, then merge new CSV on top
-    sbLoadSession(_monthKey).then(function(session){
-      // Only reset state if this is a brand new month with no saved session
+      // Load existing session first
+      var session=await sbLoadSession(_monthKey);
+
       if(!session){
+        // New month — start fresh
         transferState={};txOverrides={};undoStack=[];manualExpenses=[];window._fixedPaid={};
-        console.log('[SB] New month — starting fresh');
+        console.log('[SB] New month, starting fresh');
       } else {
-        // Restore saved state before analyzing so new CSV merges into it
+        // Existing month — restore all saved state
         undoStack=[];
-        if(session.overrides)Object.assign(txOverrides,session.overrides);
+        if(session.overrides){
+          Object.keys(session.overrides).forEach(function(k){txOverrides[k]=session.overrides[k];});
+        }
         if(session.transfer_state){
           Object.keys(session.transfer_state).forEach(function(k){transferState[k]=session.transfer_state[k];});
         }
-        if(session.fixed_paid)window._fixedPaid=session.fixed_paid;
-        if(session.categories&&session.categories.length)CATEGORIES=session.categories;
-        if(session.manual_expenses&&session.manual_expenses.length)manualExpenses=session.manual_expenses;
-        console.log('[SB] Resumed session — restored overrides:', JSON.stringify(txOverrides));
-        console.log('[SB] Restored transferState:', JSON.stringify(transferState));
+        if(session.fixed_paid) window._fixedPaid=session.fixed_paid;
+        if(session.categories&&session.categories.length) CATEGORIES=session.categories;
+        if(session.manual_expenses&&session.manual_expenses.length) manualExpenses=session.manual_expenses;
+        console.log('[SB] Resumed, txOverrides keys:', Object.keys(txOverrides).length);
         setSaveStatus('Resumed '+session.month_label);
       }
 
-      // Now analyze — allInternals initialises only NEW uids not already in transferState
-      var _rawReport=analyze(csvText);
-      lastReport=buildReport(_rawReport.allInternals,_rawReport.baseTransactions);
+      // Re-analyze with restored state — new transactions get default state, existing ones keep theirs
+      var report=analyze(csvText);
+      lastReport=buildReport(report.allInternals,report.baseTransactions);
       render(lastReport);
       document.getElementById('printBtn').style.display='';
       document.getElementById('saveMonthBtn').style.display='';
-    });
-  }
-  catch(e){document.getElementById('err').innerHTML='<div class="err-box">Error: '+e.message+'</div>';}
+    } catch(e){
+      console.error('Run error:', e);
+      document.getElementById('err').innerHTML='<div class="err-box">Error: '+e.message+'</div>';
+    }
+  })();
 });
 
 function uid(t){return t.date+'|'+t.desc+'|'+t.ut+'|'+t.inn;}
