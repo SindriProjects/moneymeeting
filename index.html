@@ -664,7 +664,7 @@ function doUndo(){
 
 function makeDrillId(cat){return'drill_'+cat.replace(/[^a-zA-Z0-9]/g,'_');}
 window._openDrills=window._openDrills||{};
-window._collapsedSections=window._collapsedSections||{};
+window._collapsedSections=window._collapsedSections||{'sec_rules':true};
 function toggleSection(id){
   window._collapsedSections[id]=!window._collapsedSections[id];
   var body=document.getElementById(id+'_body');
@@ -1013,10 +1013,7 @@ function render(d){
         +'<td style="font-size:12px;'+statusColor+'">'+statusText+'</td>'
         +'<td style="text-align:right;white-space:nowrap">'+toggleBtn+'</td></tr>';
     });
-    var bufferDrawn=d.allInternals.filter(function(t){return transferState[uid(t)]==='buffer';}).reduce(function(s,t){return s+(t.inn||t.ut);},0);
-    if(bufferDrawn>0){
-      _headroomBody+='<tr><td>Buffer drawdown <span class="pill" style="background:#eef4fc;color:#185fa5;border:1px solid #b8d4f0">financing</span></td><td class="tr" style="color:#185fa5">+'+fmt(bufferDrawn)+'</td><td class="muted">from buffer account</td><td></td></tr>';
-    }
+    // Buffer drawdown shown in top summary box only - not in headroom breakdown
     _headroomBody+='<tr style="border-top:2px solid var(--border2)"><td class="bold">Headroom remaining</td><td class="tr bold '+headroomColor+'">'+(headroom>=0?'+':'')+fmt(headroom)+'</td><td class="muted">before hitting zero</td><td></td></tr>';
     _headroomBody+='</table></div>';
     if(!salaryReceived){
