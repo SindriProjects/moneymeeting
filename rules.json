@@ -22,12 +22,12 @@
     },
     {
       "m": "contains",
-      "v": "statens lÃÂÃÂÃÂÃÂ¥nekasse for",
+      "v": "statens lÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¥nekasse for",
       "cat": "Housing"
     },
     {
       "m": "contains",
-      "v": "statens lÃÂÃÂÃÂÃÂ¥nekasse for",
+      "v": "statens lÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¥nekasse for",
       "cat": "Housing"
     },
     {
@@ -117,7 +117,7 @@
     },
     {
       "m": "contains",
-      "v": "tjÃÂÃÂÃÂÃÂ¸me faste utgifter",
+      "v": "tjÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¸me faste utgifter",
       "cat": "Housing"
     },
     {
@@ -162,17 +162,17 @@
     },
     {
       "m": "contains",
-      "v": "statens lÃÂÃÂ¥nekasse for",
+      "v": "statens lÃÂÃÂÃÂÃÂ¥nekasse for",
       "cat": "Housing"
     },
     {
       "m": "contains",
-      "v": "lÃÂÃÂ¥n 1516.01.99714",
+      "v": "lÃÂÃÂÃÂÃÂ¥n 1516.01.99714",
       "cat": "Housing"
     },
     {
       "m": "contains",
-      "v": "tjÃÂÃÂ¸me faste utgifter",
+      "v": "tjÃÂÃÂÃÂÃÂ¸me faste utgifter",
       "cat": "Housing"
     },
     {
@@ -207,12 +207,12 @@
     },
     {
       "m": "contains",
-      "v": "statens lÃÂ¥nekasse for",
+      "v": "statens lÃÂÃÂ¥nekasse for",
       "cat": "Housing"
     },
     {
       "m": "contains",
-      "v": "statens lÃÂ¥nekasse for",
+      "v": "statens lÃÂÃÂ¥nekasse for",
       "cat": "Housing"
     },
     {
@@ -272,7 +272,7 @@
     },
     {
       "m": "contains",
-      "v": "godt brød there",
+      "v": "godt brÃ¸d there",
       "cat": "Bakeries"
     },
     {
@@ -287,13 +287,18 @@
     },
     {
       "m": "contains",
-      "v": "statens lånekasse for",
+      "v": "statens lÃ¥nekasse for",
       "cat": "Housing"
     },
     {
       "m": "contains",
-      "v": "statens lånekasse for",
+      "v": "statens lÃ¥nekasse for",
       "cat": "Housing"
+    },
+    {
+      "m": "contains",
+      "v": "godt brød there",
+      "cat": "Bakeries"
     }
   ],
   "categories": [
