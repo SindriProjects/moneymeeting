@@ -1050,7 +1050,7 @@ function render(d){
     var removedBody='<div class="table-wrap"><table><tr><th>Date</th><th>Description</th><th class="tr">Amount</th><th></th></tr>';
     removedTxs.sort(function(a,b){return b.amount-a.amount;}).forEach(function(t){
       var k=uid(t);
-      removedBody+='<tr><td class="muted" style="font-family:'DM Mono',monospace;font-size:11px">'+t.date+'</td>'
+      removedBody+='<tr><td class="muted" style="font-family:monospace;font-size:11px">'+t.date+'</td>'
         +'<td>'+t.desc+'</td>'
         +'<td class="tr">'+fmt(t.amount)+'</td>'
         +'<td style="text-align:right"><button class="restore-btn" data-restore-uid="'+k+'" data-restore-transfer="'+(t._isTransfer?'1':'0')+'">Restore</button></td>'
