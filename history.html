@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finance History</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f5f4f0;--surface:#fff;--surface2:#f0efe9;--border:#e2e0d8;--border2:#ccc9be;--text:#1a1916;--text2:#6b6860;--text3:#9e9b94;--green:#1a7a4a;--green-bg:#eaf4ee;--green-bd:#b6dfc6;--red:#c0392b;--red-bg:#fdf0ee;--red-bd:#f0b8b2;--amber:#8a5c00;--amber-bg:#fdf6e3;--amber-bd:#f0d898;--r:8px;--rl:12px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;font-size:14px;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;}
+.shell{max-width:920px;margin:0 auto;padding:48px 24px 80px;}
+.header{margin-bottom:36px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.logo{font-size:22px;font-weight:500;letter-spacing:-.5px;}
+.logo span{color:var(--text3);font-weight:300;}
+.header-sub{font-size:13px;color:var(--text3);margin-top:3px;}
+.btn{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;padding:7px 14px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);color:var(--text2);cursor:pointer;transition:all .12s;white-space:nowrap;text-decoration:none;display:inline-block;}
+.btn:hover{background:var(--surface2);color:var(--text);}
+
+/* Lock screen */
+.lock{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px;}
+.lock-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:2rem 2.5rem;text-align:center;width:100%;max-width:360px;}
+.lock-title{font-size:16px;font-weight:500;margin-bottom:4px;}
+.lock-sub{font-size:13px;color:var(--text3);margin-bottom:20px;}
+.lock-input{width:100%;font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 12px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface2);color:var(--text);text-align:center;letter-spacing:2px;margin-bottom:12px;}
+.lock-input:focus{outline:none;border-color:var(--text3);}
+.lock-btn{width:100%;padding:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;border-radius:var(--r);border:none;background:var(--text);color:#fff;cursor:pointer;}
+.lock-btn:hover{opacity:.85;}
+.lock-err{font-size:12px;color:var(--red);margin-top:8px;min-height:18px;}
+
+/* Month grid */
+.month-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:32px;}
+.month-btn{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:1.25rem 1.5rem;cursor:pointer;text-align:left;transition:all .12s;font-family:'DM Sans',sans-serif;}
+.month-btn:hover{border-color:var(--border2);background:var(--surface2);}
+.month-btn.active{border-color:var(--text);background:var(--text);color:#fff;}
+.month-btn.active .month-sub{color:rgba(255,255,255,.6);}
+.month-btn.in-progress{border-color:var(--amber-bd);background:var(--amber-bg);}
+.month-btn.in-progress .month-sub{color:var(--amber);}
+.month-name{font-size:15px;font-weight:500;margin-bottom:2px;}
+.month-sub{font-size:12px;color:var(--text3);}
+.month-status{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-top:6px;}
+
+/* Summary report */
+.report-area{margin-top:8px;}
+.section{margin-bottom:28px;}
+.section-title{font-size:11px;text-transform:uppercase;letter-spacing:.8px;font-weight:500;color:var(--text3);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:24px;}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px;}
+.metric-label{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-bottom:4px;font-weight:500;}
+.metric-value{font-size:20px;font-weight:500;letter-spacing:-.5px;}
+.pos{color:var(--green);}.neg{color:var(--red);}
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;padding:9px 14px;font-size:11px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface2);}
+td{padding:9px 14px;border-bottom:1px solid var(--border);color:var(--text);}
+tr:last-child td{border-bottom:none;}
+.tr{text-align:right;}.muted{color:var(--text2);}.bold{font-weight:500;}
+.empty{text-align:center;padding:3rem;color:var(--text3);font-size:13px;}
+.period-label{display:inline-block;font-size:12px;font-family:'DM Mono',monospace;background:var(--surface2);border:1px solid var(--border);border-radius:999px;padding:3px 12px;color:var(--text2);margin-bottom:16px;letter-spacing:.3px;}
+
+/* Spend bar */
+.hbar-wrap{margin:16px 0 20px;}
+.hbar-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;}
+.hbar-track{position:relative;height:10px;border-radius:6px;}
+
+/* In-progress notice */
+.inprog-notice{background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--amber);margin-bottom:16px;}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="header">
+    <div>
+      <div class="logo">Finance <span>/ History</span></div>
+      <div class="header-sub">Monthly spending summaries</div>
+    </div>
+    <a href="index.html" class="btn">← Back to analyzer</a>
+  </div>
+
+  <div id="lockScreen" class="lock">
+    <div class="lock-card">
+      <div class="lock-title">Password required</div>
+      <div class="lock-sub">Enter the password to view history</div>
+      <input type="password" class="lock-input" id="pwInput" placeholder="••••••" onkeydown="if(event.key==='Enter')unlock()">
+      <button class="lock-btn" onclick="unlock()">View history</button>
+      <div class="lock-err" id="pwErr"></div>
+    </div>
+  </div>
+
+  <div id="mainArea" style="display:none;">
+    <div id="monthGrid" class="month-grid"></div>
+    <div id="reportArea" class="report-area"></div>
+  </div>
+</div>
+
+<script>
+const SB_URL='https://spuwzdnuxmqnblpbdtoq.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwdXd6ZG51eG1xbmJscGJkdG9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MDEzMDcsImV4cCI6MjA5MjA3NzMwN30.xtnLIvBm5DVrQAVn9W2g3wowVyqRz5DBxCtyWJj-XjA';
+const PASSWORD='Bella';
+
+function sbH(){return{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};}
+function fmt(n){return Math.round(n).toLocaleString('nb-NO')+'\u202Fkr';}
+
+function unlock(){
+  var val=document.getElementById('pwInput').value;
+  if(val===PASSWORD){
+    document.getElementById('lockScreen').style.display='none';
+    document.getElementById('mainArea').style.display='block';
+    loadMonths();
+  }else{
+    document.getElementById('pwErr').textContent='Incorrect password';
+    document.getElementById('pwInput').value='';
+    document.getElementById('pwInput').focus();
+  }
+}
+
+var sessions=[], activeMk=null;
+
+async function loadMonths(){
+  var grid=document.getElementById('monthGrid');
+  grid.innerHTML='<div class="empty">Loading...</div>';
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/monthly_sessions?select=*&order=month_key.desc',{headers:sbH()});
+    sessions=await r.json();
+    if(!sessions.length){grid.innerHTML='<div class="empty">No months saved yet.</div>';return;}
+    renderGrid();
+  }catch(e){grid.innerHTML='<div class="empty">Could not connect to database.</div>';}
+}
+
+function renderGrid(){
+  var grid=document.getElementById('monthGrid');
+  grid.innerHTML=sessions.map(function(s){
+    var isActive=s.month_key===activeMk;
+    var inProg=s.status==='in_progress';
+    return '<div class="month-btn'+(isActive?' active':inProg?' in-progress':'')+'" onclick="loadMonth(\''+s.month_key+'\')">'
+      +'<div class="month-name">'+s.month_label+'</div>'
+      +'<div class="month-sub">'+fmt(s.total_expenses||0)+' spent</div>'
+      +'<div class="month-status" style="color:'+(isActive?'rgba(255,255,255,.6)':inProg?'var(--amber)':'var(--text3)')+'">'+( inProg?'in progress':'closed')+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+async function loadMonth(mk){
+  activeMk=mk;
+  renderGrid();
+  var ra=document.getElementById('reportArea');
+  ra.innerHTML='<div class="empty">Loading...</div>';
+
+  var session=sessions.find(function(s){return s.month_key===mk;});
+  if(!session){ra.innerHTML='<div class="empty">Session not found.</div>';return;}
+
+  // Load transactions
+  var r=await fetch(SB_URL+'/rest/v1/monthly_transactions?month_key=eq.'+mk+'&select=*&order=date.asc',{headers:sbH()});
+  var txs=await r.json();
+
+  var income=txs.filter(function(t){return t.is_income;});
+  var expenses=txs.filter(function(t){return!t.is_income;});
+
+  // Group expenses by category
+  var byCat={};
+  expenses.forEach(function(t){if(!byCat[t.category])byCat[t.category]=[];byCat[t.category].push(t);});
+
+  var totalIncome=income.reduce(function(s,t){return s+(t.amount||0);},0);
+  var totalExp=expenses.reduce(function(s,t){return s+(t.amount||0);},0);
+  var net=totalIncome-totalExp;
+
+  var inProg=session.status==='in_progress';
+
+  var h='<div class="period-label">'+session.month_label+(inProg?' · in progress':'')+'</div>';
+  if(inProg) h+='<div class="inprog-notice">This month is still in progress. Data shown reflects the last upload.</div>';
+
+  // Summary metrics
+  h+='<div class="metrics">'
+    +'<div class="metric"><div class="metric-label">Total income</div><div class="metric-value pos">'+fmt(totalIncome)+'</div></div>'
+    +'<div class="metric"><div class="metric-label">Total expenses</div><div class="metric-value">'+fmt(totalExp)+'</div></div>'
+    +'<div class="metric"><div class="metric-label">Net position</div><div class="metric-value '+(net>=0?'pos':'neg')+'">'+(net>=0?'+':'')+fmt(net)+'</div></div>'
+    +'</div>';
+
+  // Spend bar (full month context)
+  var spentPct=Math.min(totalExp/totalIncome,1);
+  var fillColor=totalExp>totalIncome?'#c0392b':spentPct>0.85?'#8a5c00':'#1a7a4a';
+  var fillBg=totalExp>totalIncome?'#fdf0ee':spentPct>0.85?'#fdf6e3':'#eaf4ee';
+  h+='<div class="hbar-wrap">'
+    +'<div class="hbar-labels"><span>Spend vs income</span><span>'+fmt(totalExp)+' of '+fmt(totalIncome)+'</span></div>'
+    +'<div class="hbar-track" style="background:'+fillBg+'"><div style="width:'+Math.min(spentPct*100,100).toFixed(1)+'%;height:10px;background:'+fillColor+';border-radius:6px;"></div></div>'
+    +'</div>';
+
+  // Income breakdown
+  var incomeByCat={};
+  income.forEach(function(t){if(!incomeByCat[t.category])incomeByCat[t.category]=[];incomeByCat[t.category].push(t);});
+  h+='<div class="section"><div class="section-title">Income</div><div class="table-wrap"><table>'
+    +'<tr><th>Source</th><th class="tr">Amount</th></tr>'
+    +Object.keys(incomeByCat).map(function(cat){
+      var total=incomeByCat[cat].reduce(function(s,t){return s+(t.amount||0);},0);
+      return '<tr><td>'+cat+'</td><td class="tr">'+fmt(total)+'</td></tr>';
+    }).join('')
+    +'<tr><td class="bold">Total</td><td class="tr bold">'+fmt(totalIncome)+'</td></tr>'
+    +'</table></div></div>';
+
+  // Expenses by category
+  var catRows=Object.keys(byCat).sort(function(a,b){
+    return byCat[b].reduce(function(s,t){return s+t.amount;},0)-byCat[a].reduce(function(s,t){return s+t.amount;},0);
+  });
+  h+='<div class="section"><div class="section-title">Expenses by category</div><div class="table-wrap"><table>'
+    +'<tr><th>Category</th><th class="tr">Transactions</th><th class="tr">Total</th></tr>'
+    +catRows.map(function(cat){
+      var ts=byCat[cat];
+      var total=ts.reduce(function(s,t){return s+(t.amount||0);},0);
+      return '<tr><td>'+cat+'</td><td class="tr muted">'+ts.length+'</td><td class="tr">'+fmt(total)+'</td></tr>';
+    }).join('')
+    +'<tr><td class="bold" colspan="2">Total</td><td class="tr bold">'+fmt(totalExp)+'</td></tr>'
+    +'</table></div></div>';
+
+  // Top 10 transactions
+  var top10=expenses.slice().sort(function(a,b){return b.amount-a.amount;}).slice(0,10);
+  h+='<div class="section"><div class="section-title">Largest transactions</div><div class="table-wrap"><table>'
+    +'<tr><th>Date</th><th>Description</th><th>Category</th><th class="tr">Amount</th></tr>'
+    +top10.map(function(t){
+      return '<tr><td class="muted" style="font-family:\'DM Mono\',monospace;font-size:11px">'+t.date+'</td><td>'+t.description+'</td><td class="muted">'+t.category+'</td><td class="tr">'+fmt(t.amount)+'</td></tr>';
+    }).join('')
+    +'</table></div></div>';
+
+  ra.innerHTML=h;
+}
+
+document.getElementById('pwInput').focus();
+</script>
+</body>
+</html>

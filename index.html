@@ -145,6 +145,9 @@ tr:last-child td{border-bottom:none;}
       <div class="header-sub">Upload your monthly bank export to generate a structured report</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
+      <a href="history.html" class="btn no-print" style="text-decoration:none">View history</a>
+      <span id="saveStatus" style="font-size:12px;color:var(--text3);transition:opacity 0.5s;opacity:0;"></span>
+      <button class="btn no-print" id="saveMonthBtn" style="display:none" onclick="saveAndCloseMonth()">Close month</button>
       <button class="btn btn-green no-print" id="printBtn" style="display:none" onclick="window.print()">Print / Save PDF</button>
     </div>
   </div>
@@ -174,8 +177,11 @@ tr:last-child td{border-bottom:none;}
 </div>
 
 <script>
+const SB_URL='https://spuwzdnuxmqnblpbdtoq.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwdXd6ZG51eG1xbmJscGJkdG9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MDEzMDcsImV4cCI6MjA5MjA3NzMwN30.xtnLIvBm5DVrQAVn9W2g3wowVyqRz5DBxCtyWJj-XjA';
+function sbHeaders(){return{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'};}
 const GH_OWNER='eriklangaardsolberg-svg',GH_REPO='moneymeeting',GH_FILE='rules.json',GH_BRANCH='main';
-const DEFAULT_CATS=['Groceries','Transport','Housing','Childcare','Cleaning','Subscriptions','Wolt','Bakeries','Restaurants','Health & wellbeing','Shopping','Travel','Entertainment','Flowers','Gifts','Professional fees','Education','Insurance','Tax','Books','Kiosk','Misc'];
+const DEFAULT_CATS=['Groceries','Transport','Budgeted fixed costs','Childcare','Cleaning','Subscriptions','Wolt','Bakeries','Restaurants','Health & wellbeing','Shopping','Travel','Entertainment','Flowers','Gifts','Professional fees','Education','Insurance','Tax','Books','Kiosk','Misc'];
 let CATEGORIES=[...DEFAULT_CATS];
 let CUSTOM_RULES=[];
 let ghToken=localStorage.getItem('gh_token')||'';
@@ -194,12 +200,12 @@ const BASE_RULES=[
   {m:'contains',v:'overf\u00f8ring mat og',cat:'INTERNAL'},
   {m:'contains',v:'hjem',cat:'INTERNAL'},
   {m:'contains',v:'tannlege skinne',cat:'INTERNAL'},
-  {m:'contains',v:'vibb',cat:'Housing'},
-  {m:'contains',v:'sameiet oscars gate',cat:'Housing'},
-  {m:'contains',v:'sameiet og59a',cat:'Housing'},
-  {m:'contains',v:'homely',cat:'Housing'},
-  {m:'regex',v:'bolij\u00e5n|mortgage|l\u00e5n\\s+510288',cat:'Housing'},
-  {m:'contains',v:'l\u00e5nekassen',cat:'Housing'},
+  {m:'contains',v:'vibb',cat:'Budgeted fixed costs'},
+  {m:'contains',v:'sameiet oscars gate',cat:'Budgeted fixed costs'},
+  {m:'contains',v:'sameiet og59a',cat:'Budgeted fixed costs'},
+  {m:'contains',v:'homely',cat:'Budgeted fixed costs'},
+  {m:'regex',v:'bolij\u00e5n|mortgage|l\u00e5n\\s+510288',cat:'Budgeted fixed costs'},
+  {m:'contains',v:'l\u00e5nekassen',cat:'Budgeted fixed costs'},
   {m:'contains',v:'utdanningsetaten',cat:'Childcare'},
   {m:'contains',v:'klaudia maria',cat:'Cleaning'},
   {m:'contains',v:'klaudia',cat:'Cleaning'},
@@ -212,7 +218,7 @@ const BASE_RULES=[
   {m:'contains',v:'follum kantine',cat:'Restaurants'},
   {m:'contains',v:'ekspedisjonshallen',cat:'Restaurants'},
   {m:'contains',v:'lyngmo and co',cat:'Restaurants'},
-  {m:'contains',v:'credo',cat:'Restaurants'},
+  {m:'contains',v:'credo',cat:'Bakeries'},
   {m:'contains',v:'bax a358',cat:'Restaurants'},
   {m:'contains',v:'northernlightyoga',cat:'Health & wellbeing'},
   {m:'contains',v:'clou as youngstorget',cat:'Health & wellbeing'},
@@ -361,8 +367,89 @@ function clearF(){
   document.getElementById('report').innerHTML='';document.getElementById('err').innerHTML='';
   document.getElementById('printBtn').style.display='none';
 }
+// ── Supabase session ───────────────────────────────────────────────
+function getMonthKey(d1){return d1.getFullYear()+'-'+String(d1.getMonth()+1).padStart(2,'0');}
+function getMonthLabel(d1){return d1.toLocaleString('en-GB',{month:'long',year:'numeric'});}
+
+async function sbLoadSession(monthKey){
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/monthly_sessions?month_key=eq.'+monthKey+'&select=*',{headers:sbHeaders()});
+    var rows=await r.json();
+    return rows.length>0?rows[0]:null;
+  }catch(e){console.warn('Supabase load failed',e);return null;}
+}
+
+async function sbSaveSession(d1,report){
+  var monthKey=getMonthKey(d1);
+  var monthLabel=getMonthLabel(d1);
+  var txs=Object.values(report.byCategory).flat().concat(report.income).map(function(t){
+    return{month_key:monthKey,uid:uid(t),date:t.date,description:t.desc,amount:t.amount,category:t.cat,is_income:!!t.isIncome};
+  });
+  // Upsert transactions
+  if(txs.length>0){
+    await fetch(SB_URL+'/rest/v1/monthly_transactions',{method:'POST',headers:sbHeaders(),body:JSON.stringify(txs)});
+  }
+  // Upsert session state
+  var session={
+    month_key:monthKey,
+    month_label:monthLabel,
+    total_income:report.totalIncome,
+    total_expenses:report.totalExp,
+    net:report.net,
+    overrides:txOverrides,
+    transfer_state:transferState,
+    fixed_paid:window._fixedPaid||{},
+    categories:CATEGORIES,
+    manual_expenses:manualExpenses,
+    status:'in_progress',
+    updated_at:new Date().toISOString()
+  };
+  await fetch(SB_URL+'/rest/v1/monthly_sessions',{method:'POST',headers:Object.assign({},sbHeaders(),{'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(session)});
+  setSaveStatus('Saved to cloud');
+}
+
+async function sbMergeAndLoad(d1){
+  var monthKey=getMonthKey(d1);
+  var session=await sbLoadSession(monthKey);
+  if(!session)return false;
+  // Restore overrides and state
+  if(session.overrides)Object.assign(txOverrides,session.overrides);
+  if(session.transfer_state)Object.assign(transferState,session.transfer_state);
+  if(session.fixed_paid)window._fixedPaid=session.fixed_paid;
+  if(session.categories&&session.categories.length)CATEGORIES=session.categories;
+  if(session.manual_expenses&&session.manual_expenses.length)manualExpenses=session.manual_expenses;
+  setSaveStatus('Resumed '+session.month_label);
+  return true;
+}
+
+function setSaveStatus(msg){
+  var el=document.getElementById('saveStatus');
+  if(el){el.textContent=msg;el.style.opacity='1';setTimeout(function(){el.style.opacity='0';},3000);}
+}
+
+async function saveAndCloseMonth(){
+  if(!lastReport)return;
+  var monthKey=getMonthKey(lastReport.d1);
+  await fetch(SB_URL+'/rest/v1/monthly_sessions?month_key=eq.'+monthKey,{
+    method:'PATCH',
+    headers:sbHeaders(),
+    body:JSON.stringify({status:'closed',updated_at:new Date().toISOString()})
+  });
+  setSaveStatus('Month closed and saved');
+}
+
 runBtn.addEventListener('click',function(){
-  try{transferState={};txOverrides={};undoStack=[];manualExpenses=[];lastReport=analyze(csvText);render(lastReport);document.getElementById('printBtn').style.display='';}
+  try{
+    transferState={};txOverrides={};undoStack=[];manualExpenses=[];window._fixedPaid={};
+    var _rawReport=analyze(csvText);
+    sbMergeAndLoad(_rawReport.d1).then(function(){
+      lastReport=buildReport(_rawReport.allInternals,_rawReport.baseTransactions);
+      render(lastReport);
+      document.getElementById('printBtn').style.display='';
+      document.getElementById('saveMonthBtn').style.display='';
+      sbSaveSession(_rawReport.d1,lastReport);
+    });
+  }
   catch(e){document.getElementById('err').innerHTML='<div class="err-box">Error: '+e.message+'</div>';}
 });
 
@@ -407,12 +494,16 @@ function buildReport(allInternals,baseTransactions){
   var byCategory={};
   expenses.forEach(function(t){if(!byCategory[t.cat])byCategory[t.cat]=[];byCategory[t.cat].push(t);});
   var dates=baseTransactions.concat(allInternals).map(function(r){return r.date;}).filter(Boolean).sort();
-  var d1=new Date(dates[0]),d2=new Date(dates[dates.length-1]);
+  var d1=new Date(dates[0]);
   var daysInMonth=new Date(d1.getFullYear(),d1.getMonth()+1,0).getDate();
-  var daysElapsed=Math.round((d2-d1)/86400000)+1;
+  // Use today's date for pace, capped to end of the file's month
+  var today=new Date();
+  var endOfMonth=new Date(d1.getFullYear(),d1.getMonth()+1,0);
+  var paceDate=today<endOfMonth?today:endOfMonth;
+  var daysElapsed=Math.round((paceDate-d1)/86400000)+1;
   var varRows=Object.keys(BUDGET_VAR).map(function(cat){return{cat:cat,budget:BUDGET_VAR[cat],actual:(byCategory[cat]||[]).reduce(function(s,t){return s+t.amount;},0)};});
-  var fixedRows=Object.keys(BUDGET_FIXED).map(function(cat){return{cat:cat,budget:BUDGET_FIXED[cat],actual:(byCategory['Housing']||[]).reduce(function(s,t){return s+t.amount;},0)};});
-  var budgetedCats={'Groceries':1,'Transport':1,'Cleaning':1,'Childcare':1,'Subscriptions':1,'Housing':1};
+  var fixedRows=Object.keys(BUDGET_FIXED).map(function(cat){return{cat:cat,budget:BUDGET_FIXED[cat],actual:(byCategory['Budgeted fixed costs']||[]).reduce(function(s,t){return s+t.amount;},0)};});
+  var budgetedCats={'Groceries':1,'Transport':1,'Cleaning':1,'Childcare':1,'Subscriptions':1,'Budgeted fixed costs':1};
   var nonBudgeted=Object.keys(byCategory).filter(function(c){return!budgetedCats[c]&&c.indexOf('INCOME')!==0&&c!=='Refund';}).map(function(c){return[c,byCategory[c]];}).sort(function(a,b){return b[1].reduce(function(s,t){return s+t.amount;},0)-a[1].reduce(function(s,t){return s+t.amount;},0);});
   var totalIncome=income.reduce(function(s,t){return s+t.amount;},0);
   var totalExp=expenses.reduce(function(s,t){return s+t.amount;},0);
@@ -648,7 +739,7 @@ function render(d){
 
   h+=sectionWrap('sec_var','Variable costs \u2014 budgeted <span class="hint">\u00b7 click to expand</span>','<div class="table-wrap"><table><tr><th>Category</th><th class="tr">Budget</th><th class="tr">Actual</th><th class="tr">Variance</th></tr>'+d.varRows.map(function(r){return makeClickableRow(r.cat,[r.cat+(r.actual>r.budget?'<span class="pill pill-red">over</span>':''),'<span class="muted">'+fmt(r.budget)+'</span>',fmt(r.actual),varCell(r.actual,r.budget)],d.byCategory[r.cat]||[]);}).join('')+'</table></div>');
 
-  h+=sectionWrap('sec_fixed','Fixed costs \u2014 budgeted <span class="hint">\u00b7 click to expand</span>','<div class="table-wrap"><table><tr><th>Category</th><th class="tr">Budget</th><th class="tr">Actual</th><th class="tr">Variance</th></tr>'+d.fixedRows.map(function(r){return makeClickableRow(r.cat,[r.cat+(r.actual>r.budget?'<span class="pill pill-red">over</span>':r.actual===0?'<span class="pill pill-amb">not seen</span>':''),'<span class="muted">'+fmt(r.budget)+'</span>',fmt(r.actual),varCell(r.actual,r.budget)],d.byCategory['Housing']||[]);}).join('')+'</table></div>');
+  h+=sectionWrap('sec_fixed','Fixed costs \u2014 budgeted <span class="hint">\u00b7 click to expand</span>','<div class="table-wrap"><table><tr><th>Category</th><th class="tr">Budget</th><th class="tr">Actual</th><th class="tr">Variance</th></tr>'+d.fixedRows.map(function(r){return makeClickableRow(r.cat,[r.cat+(r.actual>r.budget?'<span class="pill pill-red">over</span>':r.actual===0?'<span class="pill pill-amb">not seen</span>':''),'<span class="muted">'+fmt(r.budget)+'</span>',fmt(r.actual),varCell(r.actual,r.budget)],d.byCategory['Budgeted fixed costs']||[]);}).join('')+'</table></div>');
 
   if(d.nonBudgeted.length>0){
     var nbTotal=d.nonBudgeted.reduce(function(s,item){return s+item[1].reduce(function(ss,t){return ss+t.amount;},0);},0);
@@ -851,10 +942,14 @@ function render(d){
   document.getElementById('report').innerHTML=h;
   restoreOpenDrills();
   renderCatPanel();
-  // attach section collapse listeners after render
   document.querySelectorAll('[data-section-id]').forEach(function(el){
     el.addEventListener('click',function(){toggleSection(el.getAttribute('data-section-id'));});
   });
+  // auto-save to Supabase on each render (debounced)
+  if(lastReport){
+    clearTimeout(window._saveTimer);
+    window._saveTimer=setTimeout(function(){sbSaveSession(lastReport.d1,lastReport);},1500);
+  }
 }
 
 function toggleTransfers(){
