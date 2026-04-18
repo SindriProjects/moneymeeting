@@ -279,6 +279,11 @@
       "m": "contains",
       "v": "klarna: barnashus.no",
       "cat": "Barneutgifter"
+    },
+    {
+      "m": "contains",
+      "v": "volvat metodika",
+      "cat": "Health & wellbeing"
     }
   ],
   "categories": [
