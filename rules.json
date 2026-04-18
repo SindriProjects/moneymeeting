@@ -344,6 +344,11 @@
       "m": "contains",
       "v": "uber *trip help.uber.c",
       "cat": "Transport"
+    },
+    {
+      "m": "contains",
+      "v": "disney plus",
+      "cat": "Subscriptions"
     }
   ],
   "categories": [
