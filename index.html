@@ -414,7 +414,10 @@ async function sbMergeAndLoad(d1){
   if(!session)return false;
   // Restore overrides and state
   if(session.overrides)Object.assign(txOverrides,session.overrides);
-  if(session.transfer_state)Object.assign(transferState,session.transfer_state);
+  if(session.transfer_state){
+    var ts=session.transfer_state;
+    Object.keys(ts).forEach(function(k){transferState[String(k)]=ts[k];});
+  }
   if(session.fixed_paid)window._fixedPaid=session.fixed_paid;
   if(session.categories&&session.categories.length)CATEGORIES=session.categories;
   if(session.manual_expenses&&session.manual_expenses.length)manualExpenses=session.manual_expenses;
@@ -471,11 +474,11 @@ function analyze(raw){
     else if(row.ut>0)
       baseTransactions.push(Object.assign({},row,{cat:cat,isIncome:false,amount:row.ut}));
   }
-  allInternals.forEach(function(_,i){if(transferState[i]===undefined)transferState[i]='excluded';});
+  allInternals.forEach(function(_,i){if(transferState[String(i)]===undefined)transferState[String(i)]='excluded';});
   return buildReport(allInternals,baseTransactions);
 }
 function buildReport(allInternals,baseTransactions){
-  var extraIncome=allInternals.filter(function(_,i){return transferState[i]==='income';}).map(function(t){return Object.assign({},t,{cat:'INCOME_TRANSFER',isIncome:true,amount:t.inn||t.ut});});
+  var extraIncome=allInternals.filter(function(_,i){return transferState[String(i)]==='income';}).map(function(t){return Object.assign({},t,{cat:'INCOME_TRANSFER',isIncome:true,amount:t.inn||t.ut});});
   var allTx=baseTransactions.concat(extraIncome);
   var expenses=[],income=[];
   allTx.forEach(function(t){
@@ -591,8 +594,8 @@ function makeClickableRow(cat,cells,drillTxs){
   return'<tr class="clickable-row" id="tr_'+id+'" onclick="toggleDrill(\''+cat.replace(/'/g,"\\'")+'\')">'+cells.map(function(c,i){return'<td'+(i>0?' class="tr"':'')+'>'+c+'</td>';}).join('')+'</tr><tr class="drill-row" id="'+id+'" style="display:none"><td colspan="'+cells.length+'">'+drillHTML(drillTxs,cat)+'</td></tr>';
 }
 function setTransfer(i,state){
-  var prev=transferState[i];transferState[i]=state;
-  pushUndo('Transfer: '+state,function(){transferState[i]=prev;});
+  var prev=transferState[String(i)];transferState[String(i)]=state;
+  pushUndo('Transfer: '+state,function(){transferState[String(i)]=prev;});
   lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions);render(lastReport);
 }
 function classifyMisc(i,addRule){
@@ -870,7 +873,7 @@ function render(d){
         +'<td style="font-size:12px;'+statusColor+'">'+statusText+'</td>'
         +'<td style="text-align:right;white-space:nowrap">'+toggleBtn+'</td></tr>';
     });
-    var bufferDrawn=d.allInternals.filter(function(_,i){return transferState[i]==='buffer';}).reduce(function(s,t,i){return s+(d.allInternals[i].inn||d.allInternals[i].ut);},0);
+    var bufferDrawn=d.allInternals.filter(function(_,i){return transferState[String(i)]==='buffer';}).reduce(function(s,t,i){return s+(d.allInternals[i].inn||d.allInternals[i].ut);},0);
     if(bufferDrawn>0){
       _headroomBody+='<tr><td>Buffer drawdown <span class="pill" style="background:#eef4fc;color:#185fa5;border:1px solid #b8d4f0">financing</span></td><td class="tr" style="color:#185fa5">+'+fmt(bufferDrawn)+'</td><td class="muted">from buffer account</td><td></td></tr>';
     }
@@ -904,13 +907,13 @@ function render(d){
 
   // Transfers — collapsible
   var internals=d.allInternals;
-  var incCount=internals.filter(function(_,i){return transferState[i]==='income';}).length;
-  var skipCount=internals.filter(function(_,i){return transferState[i]==='other';}).length;
+  var incCount=internals.filter(function(_,i){return transferState[String(i)]==='income';}).length;
+  var skipCount=internals.filter(function(_,i){return transferState[String(i)]==='other';}).length;
   var transfersCollapsed=window._transfersCollapsed===true;
   h+='<div class="section no-print" id="transferSection">';
   h+='<div class="section-title" style="cursor:pointer" onclick="toggleTransfers()">Internal transfers <span class="hint">\u00b7 '+internals.length+' total \u00b7 '+incCount+' salary \u00b7 click to '+(transfersCollapsed?'expand':'collapse')+'</span></div>';
   h+='<div id="transferBody" style="display:'+(transfersCollapsed?'none':'block')+'">';
-  h+='<div class="transfer-summary"><span>'+internals.length+' total</span><span class="pos">'+incCount+' salary</span><span class="muted">'+(internals.length-incCount-skipCount)+' excluded</span>'+(skipCount>0?'<span style="color:var(--red)">'+skipCount+' other month</span>':'')+'</div><div class="transfers-list">'+internals.map(function(t,i){var state=transferState[i]||'excluded',amount=t.ut>0?t.ut:t.inn,dir=t.ut>0?'outgoing':'incoming',sl=state==='income'?'<span class="ts ts-in">salary</span>':state==='other'?'<span class="ts ts-ot">other month</span>':'<span class="ts ts-ex">excluded</span>';return'<div class="transfer-card"><div class="transfer-info"><div class="transfer-desc">'+t.desc+'</div><div class="transfer-meta">'+t.date+' \u00b7 '+dir+'</div></div><div class="transfer-amount">'+fmt(amount)+'</div>'+sl+'<div class="transfer-actions"><button class="tbtn '+(state==='income'?'active-salary':'')+'" onclick="setTransfer('+i+',\'income\')">Salary in</button><button class="tbtn '+(state==='excluded'?'active-excluded':'')+'" onclick="setTransfer('+i+',\'excluded\')">Exclude</button><button class="tbtn '+(state==='other'?'active-other':'')+'" onclick="setTransfer('+i+',\'other\')">Other month</button></div></div>';}).join('')+'</div>';
+  h+='<div class="transfer-summary"><span>'+internals.length+' total</span><span class="pos">'+incCount+' salary</span><span class="muted">'+(internals.length-incCount-skipCount)+' excluded</span>'+(skipCount>0?'<span style="color:var(--red)">'+skipCount+' other month</span>':'')+'</div><div class="transfers-list">'+internals.map(function(t,i){var state=transferState[String(i)]||'excluded',amount=t.ut>0?t.ut:t.inn,dir=t.ut>0?'outgoing':'incoming',sl=state==='income'?'<span class="ts ts-in">salary</span>':state==='other'?'<span class="ts ts-ot">other month</span>':'<span class="ts ts-ex">excluded</span>';return'<div class="transfer-card"><div class="transfer-info"><div class="transfer-desc">'+t.desc+'</div><div class="transfer-meta">'+t.date+' \u00b7 '+dir+'</div></div><div class="transfer-amount">'+fmt(amount)+'</div>'+sl+'<div class="transfer-actions"><button class="tbtn '+(state==='income'?'active-salary':'')+'" onclick="setTransfer('+i+',\'income\')">Salary in</button><button class="tbtn '+(state==='excluded'?'active-excluded':'')+'" onclick="setTransfer('+i+',\'excluded\')">Exclude</button><button class="tbtn '+(state==='other'?'active-other':'')+'" onclick="setTransfer('+i+',\'other\')">Other month</button></div></div>';}).join('')+'</div>';
   h+='</div></div>';
 
   h+='<div class="section no-print" id="rulesSection"><div class="section-title">Custom rules <span class="hint">\u00b7 synced to GitHub \u00b7 shared with all users</span></div><div class="rules-panel">'+(CUSTOM_RULES.length===0?'<div class="no-rules">No custom rules yet. Use "+Rule" when classifying an unclassified transaction.</div>':CUSTOM_RULES.map(function(r,i){return'<div class="rule-row"><span class="rule-kw">"'+r.v+'"</span><span class="rule-cat">\u2192 '+r.cat+'</span><button class="rule-del" onclick="deleteCustomRule('+i+')">Delete</button></div>';}).join(''))+'</div></div>';
@@ -957,7 +960,7 @@ function toggleTransfers(){
   var body=document.getElementById('transferBody');
   var section=document.getElementById('transferSection');
   if(body){body.style.display=window._transfersCollapsed?'none':'block';}
-  if(section){var title=section.querySelector('.section-title');if(title){var hint=title.querySelector('.hint');if(hint){var incCount=lastReport.allInternals.filter(function(_,i){return transferState[i]==='income';}).length;hint.textContent='\u00b7 '+lastReport.allInternals.length+' total \u00b7 '+incCount+' salary \u00b7 click to '+(window._transfersCollapsed?'expand':'collapse');}}}
+  if(section){var title=section.querySelector('.section-title');if(title){var hint=title.querySelector('.hint');if(hint){var incCount=lastReport.allInternals.filter(function(_,i){return transferState[String(i)]==='income';}).length;hint.textContent='\u00b7 '+lastReport.allInternals.length+' total \u00b7 '+incCount+' salary \u00b7 click to '+(window._transfersCollapsed?'expand':'collapse');}}}
 }
 </script>
 </body>
