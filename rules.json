@@ -264,6 +264,11 @@
       "m": "contains",
       "v": "nok 18,24 bolt.eur2604151610",
       "cat": "Transport"
+    },
+    {
+      "m": "contains",
+      "v": "cutters cc-vest",
+      "cat": "Health & wellbeing"
     }
   ],
   "categories": [
