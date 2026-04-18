@@ -478,42 +478,60 @@ async function saveAndCloseMonth(){
 
 runBtn.addEventListener('click',function(){
   document.getElementById('err').innerHTML='';
-  try{
-    // 1. Analyze CSV to get month key
-    var report=analyze(csvText);
-    var monthKey=getMonthKey(report.d1);
+  (async function(){
+    try{
+      // 1. Analyze CSV to get month key
+      var report=analyze(csvText);
+      var monthKey=getMonthKey(report.d1);
+      var monthLabel=report.d1.toLocaleString('en-GB',{month:'long',year:'numeric'});
 
-    // 2. Load saved state from localStorage (instant, synchronous)
-    var lsKey='mm_session_'+monthKey;
-    var saved=null;
-    try{ saved=JSON.parse(localStorage.getItem(lsKey)); }catch(e){}
+      // 2. Try localStorage first (instant), then Supabase (shared across devices)
+      var lsKey='mm_session_'+monthKey;
+      var saved=null;
+      try{ saved=JSON.parse(localStorage.getItem(lsKey)); }catch(e){}
 
-    if(saved){
-      // Restore all saved state before buildReport runs
-      if(saved.overrides) Object.keys(saved.overrides).forEach(function(k){txOverrides[k]=saved.overrides[k];});
-      if(saved.transferState) Object.keys(saved.transferState).forEach(function(k){transferState[k]=saved.transferState[k];});
-      if(saved.fixedPaid) window._fixedPaid=saved.fixedPaid;
-      if(saved.categories&&saved.categories.length) CATEGORIES=saved.categories;
-      if(saved.manualExpenses&&saved.manualExpenses.length) manualExpenses=saved.manualExpenses;
-      setSaveStatus('Resumed '+report.d1.toLocaleString('en-GB',{month:'long',year:'numeric'}));
-      console.log('[LS] Restored session, overrides:', Object.keys(txOverrides).length, 'transfers:', Object.keys(transferState).length);
-    } else {
-      console.log('[LS] New month, starting fresh');
+      if(!saved){
+        // Not in localStorage — try Supabase (cross-device)
+        setSaveStatus('Loading shared session...');
+        var sbSession=await sbLoadSession(monthKey);
+        if(sbSession){
+          saved={
+            overrides: sbSession.overrides||{},
+            transferState: sbSession.transfer_state||{},
+            fixedPaid: sbSession.fixed_paid||{},
+            categories: sbSession.categories||[],
+            manualExpenses: sbSession.manual_expenses||[]
+          };
+          console.log('[SB] Loaded from Supabase, overrides:', Object.keys(saved.overrides).length);
+        }
+      } else {
+        console.log('[LS] Loaded from localStorage, overrides:', Object.keys(saved.overrides||{}).length);
+      }
+
+      if(saved && (Object.keys(saved.overrides||{}).length || Object.keys(saved.transferState||{}).length)){
+        // Restore all saved state before buildReport runs
+        if(saved.overrides) Object.keys(saved.overrides).forEach(function(k){txOverrides[k]=saved.overrides[k];});
+        if(saved.transferState) Object.keys(saved.transferState).forEach(function(k){transferState[k]=saved.transferState[k];});
+        if(saved.fixedPaid) window._fixedPaid=saved.fixedPaid;
+        if(saved.categories&&saved.categories.length) CATEGORIES=saved.categories;
+        if(saved.manualExpenses&&saved.manualExpenses.length) manualExpenses=saved.manualExpenses;
+        setSaveStatus('Resumed '+monthLabel);
+      } else {
+        console.log('[SB] No session found, starting fresh');
+      }
+
+      // 3. Re-analyze with restored state — new transactions init, existing keep state
+      var report2=analyze(csvText);
+      lastReport=buildReport(report2.allInternals,report2.baseTransactions);
+      render(lastReport);
+      document.getElementById('printBtn').style.display='';
+      document.getElementById('saveMonthBtn').style.display='';
+
+    } catch(e){
+      console.error('Run error:', e);
+      document.getElementById('err').innerHTML='<div class="err-box">Error: '+e.message+'</div>';
     }
-
-    // 3. Build and render — new transactions get default state, existing keep theirs
-    lastReport=buildReport(report.allInternals,report.baseTransactions);
-    render(lastReport);
-    document.getElementById('printBtn').style.display='';
-    document.getElementById('saveMonthBtn').style.display='';
-
-    // 4. Sync to Supabase in background (non-blocking)
-    sbSyncBackground(monthKey, report.d1);
-
-  } catch(e){
-    console.error('Run error:', e);
-    document.getElementById('err').innerHTML='<div class="err-box">Error: '+e.message+'</div>';
-  }
+  })();
 });
 
 function saveToLocalStorage(){
