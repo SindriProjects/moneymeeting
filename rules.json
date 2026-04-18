@@ -339,6 +339,11 @@
       "m": "contains",
       "v": "vipps*farmasiet as",
       "cat": "Health & wellbeing"
+    },
+    {
+      "m": "contains",
+      "v": "uber *trip help.uber.c",
+      "cat": "Transport"
     }
   ],
   "categories": [
