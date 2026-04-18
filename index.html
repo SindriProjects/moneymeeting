@@ -445,7 +445,7 @@ function toggleSection(id){
 function sectionWrap(id,titleHtml,bodyHtml){
   var collapsed=!!window._collapsedSections[id];
   return'<div class="section">'
-    +'<div class="section-title collapsible'+(collapsed?' collapsed':'')+'" id="'+id+'_title" onclick="toggleSection(''+id+'')" >'+titleHtml+'</div>'
+    +'<div class="section-title collapsible'+(collapsed?' collapsed':'')+'" id="'+id+'_title" onclick="toggleSection(&quot;'+id+'&quot;)" >'+titleHtml+'</div>'
     +'<div id="'+id+'_body" style="display:'+(collapsed?'none':'block')+'">'+bodyHtml+'</div>'
     +'</div>';
 }
