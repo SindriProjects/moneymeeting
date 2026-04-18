@@ -299,6 +299,11 @@
       "m": "contains",
       "v": "godt brød there",
       "cat": "Bakeries"
+    },
+    {
+      "m": "contains",
+      "v": "statens lånekasse for",
+      "cat": "Housing"
     }
   ],
   "categories": [
