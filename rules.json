@@ -319,6 +319,11 @@
       "m": "contains",
       "v": "godt brød there",
       "cat": "Bakeries"
+    },
+    {
+      "m": "contains",
+      "v": "uber *trip help.uber.c",
+      "cat": "Transport"
     }
   ],
   "categories": [
