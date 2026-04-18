@@ -445,7 +445,7 @@ function toggleSection(id){
 function sectionWrap(id,titleHtml,bodyHtml){
   var collapsed=!!window._collapsedSections[id];
   return'<div class="section">'
-    +'<div class="section-title collapsible'+(collapsed?' collapsed':'')+'" id="'+id+'_title" onclick="toggleSection(&quot;'+id+'&quot;)" >'+titleHtml+'</div>'
+    +'<div class="section-title collapsible'+(collapsed?' collapsed':'')+'" id="'+id+'_title" data-section-id="'+id+'">'+titleHtml+'</div>'
     +'<div id="'+id+'_body" style="display:'+(collapsed?'none':'block')+'">'+bodyHtml+'</div>'
     +'</div>';
 }
@@ -851,6 +851,10 @@ function render(d){
   document.getElementById('report').innerHTML=h;
   restoreOpenDrills();
   renderCatPanel();
+  // attach section collapse listeners after render
+  document.querySelectorAll('[data-section-id]').forEach(function(el){
+    el.addEventListener('click',function(){toggleSection(el.getAttribute('data-section-id'));});
+  });
 }
 
 function toggleTransfers(){
