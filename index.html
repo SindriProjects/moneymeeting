@@ -379,13 +379,24 @@ async function sbLoadSession(monthKey){
   }catch(e){console.warn('Supabase load failed',e);return null;}
 }
 
-async function sbSaveSession(d1,report){
+async function sbSaveSession(d1,report,baseTransactions){
+  baseTransactions=baseTransactions||[];
   var monthKey=getMonthKey(d1);
   var monthLabel=getMonthLabel(d1);
-  var txs=Object.values(report.byCategory).flat().concat(report.income).map(function(t){
-    return{month_key:monthKey,uid:uid(t),date:t.date,description:t.desc,amount:t.amount,category:t.cat,is_income:!!t.isIncome};
+  // Save ALL base transactions (including omitted/reclassified ones)
+  var allBaseTxs=report.allInternals?[]:[];
+  if(report.baseTransactions){
+    allBaseTxs=baseTransactions.map(function(t){
+      return{month_key:monthKey,uid:uid(t),date:t.date,description:t.desc,amount:t.amount,category:t.cat,is_income:!!t.isIncome,ut:t.ut||0,inn:t.inn||0};
+    });
+  }
+  var classifiedTxs=Object.values(report.byCategory).flat().concat(report.income).map(function(t){
+    return{month_key:monthKey,uid:uid(t),date:t.date,description:t.desc,amount:t.amount,category:t.cat,is_income:!!t.isIncome,ut:t.ut||0,inn:t.inn||0};
   });
-  // Upsert transactions
+  // Merge: base txs first, then classified (classified takes priority via upsert)
+  var seenUids={};
+  var txs=[];
+  classifiedTxs.concat(allBaseTxs).forEach(function(t){if(!seenUids[t.uid]){seenUids[t.uid]=true;txs.push(t);}});
   if(txs.length>0){
     await fetch(SB_URL+'/rest/v1/monthly_transactions',{method:'POST',headers:sbHeaders(),body:JSON.stringify(txs)});
   }
@@ -450,7 +461,8 @@ runBtn.addEventListener('click',function(){
       render(lastReport);
       document.getElementById('printBtn').style.display='';
       document.getElementById('saveMonthBtn').style.display='';
-      sbSaveSession(_rawReport.d1,lastReport);
+      // Don't save immediately on load — wait for user changes via debounced auto-save
+      // Only save if this is a NEW month (no existing session was found)
     });
   }
   catch(e){document.getElementById('err').innerHTML='<div class="err-box">Error: '+e.message+'</div>';}
@@ -951,7 +963,7 @@ function render(d){
   // auto-save to Supabase on each render (debounced)
   if(lastReport){
     clearTimeout(window._saveTimer);
-    window._saveTimer=setTimeout(function(){sbSaveSession(lastReport.d1,lastReport);},1500);
+    window._saveTimer=setTimeout(function(){sbSaveSession(lastReport.d1,lastReport,lastReport.baseTransactions);},1500);
   }
 }
 
