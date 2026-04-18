@@ -177,6 +177,19 @@ tr:last-child td{border-bottom:none;}
 </div>
 
 <script>
+window.onerror=function(msg,src,line,col,err){
+  var d=document.createElement('div');
+  d.style='position:fixed;top:0;left:0;right:0;background:#c0392b;color:#fff;padding:12px 16px;font-family:monospace;font-size:13px;z-index:99999;white-space:pre-wrap;';
+  d.textContent='JS ERROR: '+msg+'\nLine: '+line+' Col: '+col+'\nFile: '+src;
+  document.body.appendChild(d);
+  return false;
+};
+window.addEventListener('unhandledrejection',function(e){
+  var d=document.createElement('div');
+  d.style='position:fixed;top:40px;left:0;right:0;background:#8a5c00;color:#fff;padding:12px 16px;font-family:monospace;font-size:13px;z-index:99999;white-space:pre-wrap;';
+  d.textContent='PROMISE ERROR: '+(e.reason&&e.reason.message?e.reason.message:e.reason);
+  document.body.appendChild(d);
+});
 const SB_URL='https://spuwzdnuxmqnblpbdtoq.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwdXd6ZG51eG1xbmJscGJkdG9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MDEzMDcsImV4cCI6MjA5MjA3NzMwN30.xtnLIvBm5DVrQAVn9W2g3wowVyqRz5DBxCtyWJj-XjA';
 function sbHeaders(){return{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'};}
@@ -939,8 +952,8 @@ function render(d){
         :(x.autoSeen?'found but overridden':'not yet seen');
       var statusColor=x.seen?'color:var(--green)':'color:var(--amber)';
       var toggleBtn=x.seen
-        ?'<button onclick="setFixedPaid(\''+x.key+'\',\'pending\')" style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--border2);background:var(--surface);cursor:pointer;color:var(--text2)">Mark pending</button>'
-        :'<button onclick="setFixedPaid(\''+x.key+'\',\'paid\')" style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--green-bd);background:var(--green-bg);cursor:pointer;color:var(--green)">Mark paid</button>';
+        ?'<button data-fp-key="'+x.key+'" data-fp-val="pending" style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--border2);background:var(--surface);cursor:pointer;color:var(--text2)">Mark pending</button>'
+        :'<button data-fp-key="'+x.key+'" data-fp-val="paid" style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--green-bd);background:var(--green-bg);cursor:pointer;color:var(--green)">Mark paid</button>';
       _headroomBody+='<tr><td>'+x.label+(x.seen?'':' <span class="pill pill-amb">pending</span>')+'</td>'
         +'<td class="tr '+(x.seen?'muted':'neg')+'">'+(x.seen?'\u2014':'\u2212'+fmt(x.amount))+'</td>'
         +'<td style="font-size:12px;'+statusColor+'">'+statusText+'</td>'
@@ -1020,6 +1033,11 @@ function render(d){
   renderCatPanel();
   document.querySelectorAll('[data-section-id]').forEach(function(el){
     el.addEventListener('click',function(){toggleSection(el.getAttribute('data-section-id'));});
+  });
+  document.querySelectorAll('[data-fp-key]').forEach(function(el){
+    el.addEventListener('click',function(){
+      setFixedPaid(el.getAttribute('data-fp-key'),el.getAttribute('data-fp-val'));
+    });
   });
   // auto-save to Supabase on each render (debounced)
   if(lastReport){
