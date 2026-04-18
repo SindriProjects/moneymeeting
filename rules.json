@@ -324,6 +324,11 @@
       "m": "contains",
       "v": "uber *trip help.uber.c",
       "cat": "Transport"
+    },
+    {
+      "m": "contains",
+      "v": "vipps*the broth compan",
+      "cat": "Groceries"
     }
   ],
   "categories": [
