@@ -362,7 +362,9 @@ function loadFile(file){
   reader.readAsText(file,'UTF-8');
 }
 function clearF(){
-  csvText=null;fi.value='';transferState={};txOverrides={};
+  csvText=null;fi.value='';
+  // Don't clear transferState/txOverrides - state is preserved for re-upload
+  // State only resets when a new month is detected in the run button
   document.getElementById('badge').innerHTML='';runBtn.disabled=true;
   document.getElementById('report').innerHTML='';document.getElementById('err').innerHTML='';
   document.getElementById('printBtn').style.display='none';
