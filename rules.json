@@ -319,6 +319,11 @@
       "m": "contains",
       "v": "lån 1516.01.99714",
       "cat": "Budgeted fixed costs"
+    },
+    {
+      "m": "contains",
+      "v": "tjøme faste utgifter",
+      "cat": "Budgeted fixed costs"
     }
   ],
   "categories": [
