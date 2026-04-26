@@ -329,6 +329,11 @@
       "m": "contains",
       "v": "nok 22,12 bolt",
       "cat": "Transport"
+    },
+    {
+      "m": "contains",
+      "v": "godt brød there",
+      "cat": "Bakeries"
     }
   ],
   "categories": [
