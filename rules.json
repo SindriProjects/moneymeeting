@@ -304,6 +304,11 @@
       "m": "contains",
       "v": "klær til jentene",
       "cat": "Barneutgifter"
+    },
+    {
+      "m": "contains",
+      "v": "polarn o pyret",
+      "cat": "Barneutgifter"
     }
   ],
   "categories": [
