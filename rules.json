@@ -324,6 +324,11 @@
       "m": "contains",
       "v": "tjøme faste utgifter",
       "cat": "Budgeted fixed costs"
+    },
+    {
+      "m": "contains",
+      "v": "nok 22,12 bolt",
+      "cat": "Transport"
     }
   ],
   "categories": [
