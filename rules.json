@@ -175,7 +175,7 @@
       "v": "joker briskeby",
       "cat": "Groceries"
     },
-   {
+    {
       "m": "contains",
       "v": "joker briskeby",
       "cat": "Groceries"
@@ -242,17 +242,17 @@
     },
     {
       "m": "contains",
+      "v": "godt brÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¸d there",
+      "cat": "Bakeries"
+    },
+    {
+      "m": "contains",
       "v": "godt brÃÂÃÂÃÂÃÂ¸d there",
       "cat": "Bakeries"
     },
     {
       "m": "contains",
       "v": "godt brÃÂÃÂ¸d there",
-      "cat": "Bakeries"
-    },
-    {
-      "m": "contains",
-      "v": "godt brÃÂ¸d there",
       "cat": "Bakeries"
     },
     {
@@ -287,19 +287,24 @@
     },
     {
       "m": "contains",
+      "v": "godt brÃÂ¸d there",
+      "cat": "Bakeries"
+    },
+    {
+      "m": "contains",
       "v": "godt brÃ¸d there",
       "cat": "Bakeries"
     },
     {
       "m": "contains",
-      "v": "godt brød there",
-      "cat": "Bakeries"
+      "v": "nordlysbadet al",
+      "cat": "Health & wellbeing"
     }
   ],
   "categories": [
-    "Budgeted fixed costs",
     "Groceries",
     "Transport",
+    "Budgeted fixed costs",
     "Childcare",
     "Cleaning",
     "Subscriptions",
