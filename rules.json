@@ -314,6 +314,11 @@
       "m": "contains",
       "v": "h43 fredrik &",
       "cat": "Barneutgifter"
+    },
+    {
+      "m": "contains",
+      "v": "lån 1516.01.99714",
+      "cat": "Budgeted fixed costs"
     }
   ],
   "categories": [
