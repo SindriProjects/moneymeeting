@@ -344,6 +344,11 @@
       "m": "contains",
       "v": "inkclub.com/no/no",
       "cat": "Huskostnader"
+    },
+    {
+      "m": "contains",
+      "v": "vipps*endor global",
+      "cat": "Health & wellbeing"
     }
   ],
   "categories": [
