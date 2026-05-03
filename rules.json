@@ -359,6 +359,11 @@
       "m": "contains",
       "v": "vestkantbadet",
       "cat": "Health & wellbeing"
+    },
+    {
+      "m": "contains",
+      "v": "klarna:lensway.no",
+      "cat": "Health & wellbeing"
     }
   ],
   "categories": [
