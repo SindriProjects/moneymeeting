@@ -349,6 +349,11 @@
       "m": "contains",
       "v": "vipps*endor global",
       "cat": "Health & wellbeing"
+    },
+    {
+      "m": "contains",
+      "v": "klarna: vitaminx.no",
+      "cat": "Health & wellbeing"
     }
   ],
   "categories": [
