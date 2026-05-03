@@ -242,17 +242,17 @@
     },
     {
       "m": "contains",
+      "v": "godt brÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¸d there",
+      "cat": "Bakeries"
+    },
+    {
+      "m": "contains",
       "v": "godt brÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¸d there",
       "cat": "Bakeries"
     },
     {
       "m": "contains",
       "v": "godt brÃÂÃÂÃÂÃÂ¸d there",
-      "cat": "Bakeries"
-    },
-    {
-      "m": "contains",
-      "v": "godt brÃÂÃÂ¸d there",
       "cat": "Bakeries"
     },
     {
@@ -287,12 +287,12 @@
     },
     {
       "m": "contains",
-      "v": "godt brÃÂ¸d there",
+      "v": "godt brÃÂÃÂ¸d there",
       "cat": "Bakeries"
     },
     {
       "m": "contains",
-      "v": "godt brÃ¸d there",
+      "v": "godt brÃÂ¸d there",
       "cat": "Bakeries"
     },
     {
@@ -302,7 +302,7 @@
     },
     {
       "m": "contains",
-      "v": "klær til jentene",
+      "v": "klÃ¦r til jentene",
       "cat": "Barneutgifter"
     },
     {
@@ -317,12 +317,12 @@
     },
     {
       "m": "contains",
-      "v": "lån 1516.01.99714",
+      "v": "lÃ¥n 1516.01.99714",
       "cat": "Budgeted fixed costs"
     },
     {
       "m": "contains",
-      "v": "tjøme faste utgifter",
+      "v": "tjÃ¸me faste utgifter",
       "cat": "Budgeted fixed costs"
     },
     {
@@ -332,8 +332,13 @@
     },
     {
       "m": "contains",
-      "v": "godt brød there",
+      "v": "godt brÃ¸d there",
       "cat": "Bakeries"
+    },
+    {
+      "m": "contains",
+      "v": "juels kolonial",
+      "cat": "Groceries"
     }
   ],
   "categories": [
@@ -359,7 +364,6 @@
     "Misc",
     "Jobblunch",
     "Pub, Bar etc",
-    "Barneutgifter",
-    "Ting til huset"
+    "Barneutgifter"
   ]
 }
