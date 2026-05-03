@@ -384,6 +384,11 @@
       "m": "contains",
       "v": "glodyoga.no",
       "cat": "Health & wellbeing"
+    },
+    {
+      "m": "contains",
+      "v": "klarna: synsam.no",
+      "cat": "Health & wellbeing"
     }
   ],
   "categories": [
