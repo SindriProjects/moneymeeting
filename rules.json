@@ -369,6 +369,11 @@
       "m": "contains",
       "v": "nok 53,70 bolt.eu/r/260421134",
       "cat": "Transport"
+    },
+    {
+      "m": "contains",
+      "v": "lån 1516.01.99714",
+      "cat": "Budgeted fixed costs"
     }
   ],
   "categories": [
