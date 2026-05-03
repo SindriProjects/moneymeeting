@@ -379,6 +379,11 @@
       "m": "contains",
       "v": "tjøme faste utgifter",
       "cat": "Budgeted fixed costs"
+    },
+    {
+      "m": "contains",
+      "v": "glodyoga.no",
+      "cat": "Health & wellbeing"
     }
   ],
   "categories": [
