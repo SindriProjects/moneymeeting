@@ -339,6 +339,11 @@
       "m": "contains",
       "v": "juels kolonial",
       "cat": "Groceries"
+    },
+    {
+      "m": "contains",
+      "v": "inkclub.com/no/no",
+      "cat": "Huskostnader"
     }
   ],
   "categories": [
