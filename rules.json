@@ -394,6 +394,11 @@
       "m": "contains",
       "v": "godt brød there",
       "cat": "Bakeries"
+    },
+    {
+      "m": "contains",
+      "v": "clas ohl 2875",
+      "cat": "Huskostnader"
     }
   ],
   "categories": [
