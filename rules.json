@@ -354,6 +354,11 @@
       "m": "contains",
       "v": "klarna: vitaminx.no",
       "cat": "Health & wellbeing"
+    },
+    {
+      "m": "contains",
+      "v": "vestkantbadet",
+      "cat": "Health & wellbeing"
     }
   ],
   "categories": [
