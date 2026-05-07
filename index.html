@@ -390,10 +390,23 @@ function setGhStatus(state,msg){
   dot.className='gh-dot'+(state==='ok'?' ok':state==='err'?' err':state==='loading'?' loading':'');
   st.textContent=msg;
 }
+async function sbGetConfig(key){
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/app_config?key=eq.'+key+'&select=value',{headers:await sbHeaders()});
+    var rows=await r.json();
+    return rows.length>0?rows[0].value:null;
+  }catch(e){return null;}
+}
+async function sbSetConfig(key,value){
+  try{
+    await fetch(SB_URL+'/rest/v1/app_config',{method:'POST',headers:await sbHeaders(),body:JSON.stringify({key:key,value:value})});
+  }catch(e){console.warn('Config save failed',e);}
+}
 async function connectGitHub(){
   ghToken=document.getElementById('ghToken').value.trim();
   if(!ghToken)return;
   localStorage.setItem('gh_token',ghToken);
+  sbSetConfig('gh_token',ghToken);
   await ghLoad();
   document.querySelector('.gh-bar').style.display='none';
 }
@@ -401,6 +414,7 @@ window.addEventListener('load',async function(){
   var s=await _supabase.auth.getSession();
   if(s.data.session){showApp();}else{showAuthScreen();}
   var stored=localStorage.getItem('gh_token');
+  if(!stored){stored=await sbGetConfig('gh_token');if(stored)localStorage.setItem('gh_token',stored);}
   if(stored){
     ghToken=stored;
     await ghLoad();
