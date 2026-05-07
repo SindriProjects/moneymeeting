@@ -172,6 +172,7 @@ tr:last-child td{border-bottom:none;}
     <div style="display:flex;gap:8px;align-items:center;">
       <a href="history.html" class="btn no-print" style="text-decoration:none">View history</a>
       <span id="saveStatus" style="font-size:12px;color:var(--text3);transition:opacity 0.5s;opacity:0;"></span>
+      <button class="btn no-print" id="saveHistoryBtn" style="display:none" onclick="saveToHistory()">Save to history</button>
       <button class="btn no-print" id="saveMonthBtn" style="display:none" onclick="saveAndCloseMonth()">Close month</button>
       <button class="btn btn-green no-print" id="printBtn" style="display:none" onclick="window.print()">Print / Save PDF</button>
       <button class="btn no-print" id="logoutBtn" onclick="doSignOut()" style="display:none;">Sign out</button>
@@ -636,6 +637,7 @@ runBtn.addEventListener('click',function(){
       render(lastReport);
       document.getElementById('printBtn').style.display='';
       document.getElementById('saveMonthBtn').style.display='';
+      document.getElementById('saveHistoryBtn').style.display='';
 
     } catch(e){
       console.error('Run error:', e);
@@ -660,17 +662,20 @@ function saveToLocalStorage(){
     localStorage.setItem(lsKey, JSON.stringify(data));
     console.log('[LS] Saved overrides:', Object.keys(txOverrides).length, 'transfers:', Object.keys(transferState).length);
   }catch(e){ console.warn('[LS] Save failed:', e); }
-  // Always sync to Supabase immediately (not debounced) so other devices get it
-  sbSyncBackground(monthKey, lastReport.d1);
 }
 
-function sbSyncBackground(monthKey, d1){
+async function saveToHistory(){
   if(!lastReport) return;
-  sbSaveSession(d1, lastReport, lastReport.baseTransactions).then(function(){
-    console.log('[SB] Synced to Supabase');
-  }).catch(function(e){
-    console.warn('[SB] Background sync failed:', e);
-  });
+  var btn=document.getElementById('saveHistoryBtn');
+  btn.disabled=true; btn.textContent='Saving...';
+  try{
+    await sbSaveSession(lastReport.d1, lastReport, lastReport.baseTransactions);
+    btn.textContent='Saved!';
+    setTimeout(function(){btn.disabled=false;btn.textContent='Save to history';},2000);
+  }catch(e){
+    btn.disabled=false; btn.textContent='Save to history';
+    setSaveStatus('Save failed');
+  }
 }
 
 

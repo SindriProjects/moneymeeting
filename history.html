@@ -64,6 +64,11 @@ tr:last-child td{border-bottom:none;}
 .hbar-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;}
 .hbar-track{position:relative;height:10px;border-radius:6px;}
 
+/* Delete button on month cards */
+.delete-btn{position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;font-size:12px;color:var(--text3);padding:2px 5px;border-radius:4px;line-height:1;opacity:0;transition:opacity .1s;}
+.month-btn:hover .delete-btn{opacity:1;}
+.delete-btn:hover{background:var(--red-bg);color:var(--red);}
+
 /* In-progress notice */
 .inprog-notice{background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--amber);margin-bottom:16px;}
 </style>
@@ -170,12 +175,23 @@ function renderGrid(){
   grid.innerHTML=sessions.map(function(s){
     var isActive=s.month_key===activeMk;
     var inProg=s.status==='in_progress';
-    return '<div class="month-btn'+(isActive?' active':inProg?' in-progress':'')+'" onclick="loadMonth(\''+s.month_key+'\')">'
+    return '<div class="month-btn'+(isActive?' active':inProg?' in-progress':'')+'" style="position:relative;" onclick="loadMonth(\''+s.month_key+'\')">'
       +'<div class="month-name">'+s.month_label+'</div>'
       +'<div class="month-sub">'+fmt(s.total_expenses||0)+' spent</div>'
       +'<div class="month-status" style="color:'+(isActive?'rgba(255,255,255,.6)':inProg?'var(--amber)':'var(--text3)')+'">'+( inProg?'in progress':'closed')+'</div>'
+      +'<button class="delete-btn" onclick="event.stopPropagation();deleteMonth(\''+s.month_key+'\')" title="Delete">&#x2715;</button>'
       +'</div>';
   }).join('');
+}
+
+async function deleteMonth(mk){
+  if(!confirm('Delete '+mk+' from history? This cannot be undone.'))return;
+  var hdrs=await sbHeaders();
+  await fetch(SB_URL+'/rest/v1/monthly_transactions?month_key=eq.'+mk,{method:'DELETE',headers:hdrs});
+  await fetch(SB_URL+'/rest/v1/monthly_sessions?month_key=eq.'+mk,{method:'DELETE',headers:hdrs});
+  if(activeMk===mk){activeMk=null;document.getElementById('reportArea').innerHTML='';}
+  sessions=sessions.filter(function(s){return s.month_key!==mk;});
+  if(sessions.length){renderGrid();}else{document.getElementById('monthGrid').innerHTML='<div class="empty">No months saved yet.</div>';}
 }
 
 async function loadMonth(mk){
