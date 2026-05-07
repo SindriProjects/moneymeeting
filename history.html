@@ -83,12 +83,11 @@ tr:last-child td{border-bottom:none;}
 
   <div id="lockScreen" class="lock">
     <div class="lock-card">
-      <div class="lock-title" id="authTitle">Sign in</div>
-      <div class="lock-sub" id="authSub">View your finance history</div>
+      <div class="lock-title">Sign in</div>
+      <div class="lock-sub">View your finance history</div>
       <input type="email" class="lock-input" id="authEmail" placeholder="Email address" style="letter-spacing:normal;text-align:left;" autocomplete="email">
       <input type="password" class="lock-input" id="authPassword" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth()">
       <button class="lock-btn" id="authSubmit" onclick="doAuth()">Sign in</button>
-      <button class="lock-btn" id="authToggleBtn" onclick="toggleAuthMode()" style="background:transparent;color:var(--text2);border:1px solid var(--border2);margin-top:6px;">Create account instead</button>
       <div class="lock-err" id="authErr"></div>
     </div>
   </div>
@@ -111,18 +110,6 @@ async function sbHeaders(){
 }
 function fmt(n){return Math.round(n).toLocaleString('nb-NO')+'\u202Fkr';}
 
-var _authMode='signin';
-
-function toggleAuthMode(){
-  _authMode=_authMode==='signin'?'signup':'signin';
-  var isSignup=_authMode==='signup';
-  document.getElementById('authTitle').textContent=isSignup?'Create account':'Sign in';
-  document.getElementById('authSub').textContent=isSignup?'Set up your finance account':'View your finance history';
-  document.getElementById('authSubmit').textContent=isSignup?'Create account':'Sign in';
-  document.getElementById('authToggleBtn').textContent=isSignup?'Sign in instead':'Create account instead';
-  document.getElementById('authErr').textContent='';
-}
-
 async function doAuth(){
   var email=document.getElementById('authEmail').value.trim();
   var password=document.getElementById('authPassword').value;
@@ -131,14 +118,11 @@ async function doAuth(){
   if(!email||!password){errEl.textContent='Email and password required.';return;}
   document.getElementById('authSubmit').disabled=true;
   document.getElementById('authSubmit').textContent='Please wait...';
-  var result=_authMode==='signup'
-    ?await _supabase.auth.signUp({email:email,password:password})
-    :await _supabase.auth.signInWithPassword({email:email,password:password});
+  var result=await _supabase.auth.signInWithPassword({email:email,password:password});
   document.getElementById('authSubmit').disabled=false;
-  document.getElementById('authSubmit').textContent=_authMode==='signup'?'Create account':'Sign in';
+  document.getElementById('authSubmit').textContent='Sign in';
   if(result.error){errEl.textContent=result.error.message;return;}
-  if(result.data&&result.data.session){showApp();}
-  else if(_authMode==='signup'){errEl.textContent='Check your email to confirm your account, then sign in.';}
+  if(result.data&&result.data.session)showApp();
 }
 
 async function doSignOut(){

@@ -155,12 +155,11 @@ tr:last-child td{border-bottom:none;}
 <div class="shell">
   <div id="authScreen" class="auth-screen" style="display:none;">
     <div class="auth-card">
-      <div class="auth-title" id="authTitle">Sign in</div>
-      <div class="auth-sub" id="authSub">Access your finance data</div>
+      <div class="auth-title">Sign in</div>
+      <div class="auth-sub">Access your finance data</div>
       <input type="email" class="auth-input" id="authEmail" placeholder="Email address" autocomplete="email">
       <input type="password" class="auth-input" id="authPassword" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth()">
       <button class="auth-btn" id="authSubmit" onclick="doAuth()">Sign in</button>
-      <button class="auth-btn auth-btn-sec" id="authToggleBtn" onclick="toggleAuthMode()">Create account instead</button>
       <div class="auth-err" id="authErr"></div>
     </div>
   </div>
@@ -226,21 +225,6 @@ async function sbHeaders(){
   var token=s.data.session?s.data.session.access_token:SB_KEY;
   return{'apikey':SB_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'};
 }
-async function currentUserId(){
-  var s=await _supabase.auth.getSession();
-  return s.data.session?s.data.session.user.id:null;
-}
-
-var _authMode='signin';
-function toggleAuthMode(){
-  _authMode=_authMode==='signin'?'signup':'signin';
-  var isSignup=_authMode==='signup';
-  document.getElementById('authTitle').textContent=isSignup?'Create account':'Sign in';
-  document.getElementById('authSub').textContent=isSignup?'Set up your finance account':'Access your finance data';
-  document.getElementById('authSubmit').textContent=isSignup?'Create account':'Sign in';
-  document.getElementById('authToggleBtn').textContent=isSignup?'Sign in instead':'Create account instead';
-  document.getElementById('authErr').textContent='';
-}
 async function doAuth(){
   var email=document.getElementById('authEmail').value.trim();
   var password=document.getElementById('authPassword').value;
@@ -249,14 +233,11 @@ async function doAuth(){
   if(!email||!password){errEl.textContent='Email and password required.';return;}
   document.getElementById('authSubmit').disabled=true;
   document.getElementById('authSubmit').textContent='Please wait...';
-  var result=_authMode==='signup'
-    ?await _supabase.auth.signUp({email:email,password:password})
-    :await _supabase.auth.signInWithPassword({email:email,password:password});
+  var result=await _supabase.auth.signInWithPassword({email:email,password:password});
   document.getElementById('authSubmit').disabled=false;
-  document.getElementById('authSubmit').textContent=_authMode==='signup'?'Create account':'Sign in';
+  document.getElementById('authSubmit').textContent='Sign in';
   if(result.error){errEl.textContent=result.error.message;return;}
-  if(result.data&&result.data.session){showApp();}
-  else if(_authMode==='signup'){errEl.textContent='Check your email to confirm your account, then sign in.';}
+  if(result.data&&result.data.session)showApp();
 }
 async function doSignOut(){
   await _supabase.auth.signOut();
@@ -523,10 +504,8 @@ async function sbSaveSession(d1,report,baseTransactions){
   var seenUids={};
   var txs=[];
   classifiedTxs.concat(allBaseTxs).forEach(function(t){if(!seenUids[t.uid]){seenUids[t.uid]=true;txs.push(t);}});
-  var uid_val=await currentUserId();
   if(txs.length>0){
-    var txsWithUser=txs.map(function(t){return Object.assign({},t,{user_id:uid_val});});
-    await fetch(SB_URL+'/rest/v1/monthly_transactions',{method:'POST',headers:await sbHeaders(),body:JSON.stringify(txsWithUser)});
+    await fetch(SB_URL+'/rest/v1/monthly_transactions',{method:'POST',headers:await sbHeaders(),body:JSON.stringify(txs)});
   }
   // Upsert session state
   var session={
@@ -541,8 +520,7 @@ async function sbSaveSession(d1,report,baseTransactions){
     categories:CATEGORIES,
     manual_expenses:manualExpenses,
     status:'in_progress',
-    updated_at:new Date().toISOString(),
-    user_id:uid_val
+    updated_at:new Date().toISOString()
   };
   console.log('[SB] Saving session, overrides:', JSON.stringify(session.overrides));
   console.log('[SB] Saving transfer_state:', JSON.stringify(session.transfer_state));
