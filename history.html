@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Finance History</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#f5f4f0;--surface:#fff;--surface2:#f0efe9;--border:#e2e0d8;--border2:#ccc9be;--text:#1a1916;--text2:#6b6860;--text3:#9e9b94;--green:#1a7a4a;--green-bg:#eaf4ee;--green-bd:#b6dfc6;--red:#c0392b;--red-bg:#fdf0ee;--red-bd:#f0b8b2;--amber:#8a5c00;--amber-bg:#fdf6e3;--amber-bd:#f0d898;--r:8px;--rl:12px;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -74,16 +75,21 @@ tr:last-child td{border-bottom:none;}
       <div class="logo">Finance <span>/ History</span></div>
       <div class="header-sub">Monthly spending summaries</div>
     </div>
-    <a href="index.html" class="btn">← Back to analyzer</a>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="btn" id="logoutBtn" onclick="doSignOut()" style="display:none;">Sign out</button>
+      <a href="index.html" class="btn">← Back to analyzer</a>
+    </div>
   </div>
 
   <div id="lockScreen" class="lock">
     <div class="lock-card">
-      <div class="lock-title">Password required</div>
-      <div class="lock-sub">Enter the password to view history</div>
-      <input type="password" class="lock-input" id="pwInput" placeholder="••••••" onkeydown="if(event.key==='Enter')unlock()">
-      <button class="lock-btn" onclick="unlock()">View history</button>
-      <div class="lock-err" id="pwErr"></div>
+      <div class="lock-title" id="authTitle">Sign in</div>
+      <div class="lock-sub" id="authSub">View your finance history</div>
+      <input type="email" class="lock-input" id="authEmail" placeholder="Email address" style="letter-spacing:normal;text-align:left;" autocomplete="email">
+      <input type="password" class="lock-input" id="authPassword" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth()">
+      <button class="lock-btn" id="authSubmit" onclick="doAuth()">Sign in</button>
+      <button class="lock-btn" id="authToggleBtn" onclick="toggleAuthMode()" style="background:transparent;color:var(--text2);border:1px solid var(--border2);margin-top:6px;">Create account instead</button>
+      <div class="lock-err" id="authErr"></div>
     </div>
   </div>
 
@@ -96,23 +102,71 @@ tr:last-child td{border-bottom:none;}
 <script>
 const SB_URL='https://spuwzdnuxmqnblpbdtoq.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwdXd6ZG51eG1xbmJscGJkdG9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MDEzMDcsImV4cCI6MjA5MjA3NzMwN30.xtnLIvBm5DVrQAVn9W2g3wowVyqRz5DBxCtyWJj-XjA';
-const PASSWORD='Bella';
+const _supabase=supabase.createClient(SB_URL,SB_KEY);
 
-function sbH(){return{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};}
+async function sbHeaders(){
+  var s=await _supabase.auth.getSession();
+  var token=s.data.session?s.data.session.access_token:SB_KEY;
+  return{'apikey':SB_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'};
+}
 function fmt(n){return Math.round(n).toLocaleString('nb-NO')+'\u202Fkr';}
 
-function unlock(){
-  var val=document.getElementById('pwInput').value;
-  if(val===PASSWORD){
-    document.getElementById('lockScreen').style.display='none';
-    document.getElementById('mainArea').style.display='block';
-    loadMonths();
-  }else{
-    document.getElementById('pwErr').textContent='Incorrect password';
-    document.getElementById('pwInput').value='';
-    document.getElementById('pwInput').focus();
-  }
+var _authMode='signin';
+
+function toggleAuthMode(){
+  _authMode=_authMode==='signin'?'signup':'signin';
+  var isSignup=_authMode==='signup';
+  document.getElementById('authTitle').textContent=isSignup?'Create account':'Sign in';
+  document.getElementById('authSub').textContent=isSignup?'Set up your finance account':'View your finance history';
+  document.getElementById('authSubmit').textContent=isSignup?'Create account':'Sign in';
+  document.getElementById('authToggleBtn').textContent=isSignup?'Sign in instead':'Create account instead';
+  document.getElementById('authErr').textContent='';
 }
+
+async function doAuth(){
+  var email=document.getElementById('authEmail').value.trim();
+  var password=document.getElementById('authPassword').value;
+  var errEl=document.getElementById('authErr');
+  errEl.textContent='';
+  if(!email||!password){errEl.textContent='Email and password required.';return;}
+  document.getElementById('authSubmit').disabled=true;
+  document.getElementById('authSubmit').textContent='Please wait...';
+  var result=_authMode==='signup'
+    ?await _supabase.auth.signUp({email:email,password:password})
+    :await _supabase.auth.signInWithPassword({email:email,password:password});
+  document.getElementById('authSubmit').disabled=false;
+  document.getElementById('authSubmit').textContent=_authMode==='signup'?'Create account':'Sign in';
+  if(result.error){errEl.textContent=result.error.message;return;}
+  if(result.data&&result.data.session){showApp();}
+  else if(_authMode==='signup'){errEl.textContent='Check your email to confirm your account, then sign in.';}
+}
+
+async function doSignOut(){
+  await _supabase.auth.signOut();
+  showAuthScreen();
+}
+
+function showAuthScreen(){
+  document.getElementById('lockScreen').style.display='flex';
+  document.getElementById('mainArea').style.display='none';
+  document.getElementById('logoutBtn').style.display='none';
+}
+
+function showApp(){
+  document.getElementById('lockScreen').style.display='none';
+  document.getElementById('mainArea').style.display='block';
+  document.getElementById('logoutBtn').style.display='';
+  loadMonths();
+}
+
+_supabase.auth.onAuthStateChange(function(event,session){
+  if(event==='SIGNED_OUT'||!session)showAuthScreen();
+});
+
+window.addEventListener('load',async function(){
+  var s=await _supabase.auth.getSession();
+  if(s.data.session){showApp();}else{showAuthScreen();}
+});
 
 var sessions=[], activeMk=null;
 
@@ -120,7 +174,7 @@ async function loadMonths(){
   var grid=document.getElementById('monthGrid');
   grid.innerHTML='<div class="empty">Loading...</div>';
   try{
-    var r=await fetch(SB_URL+'/rest/v1/monthly_sessions?select=*&order=month_key.desc',{headers:sbH()});
+    var r=await fetch(SB_URL+'/rest/v1/monthly_sessions?select=*&order=month_key.desc',{headers:await sbHeaders()});
     sessions=await r.json();
     if(!sessions.length){grid.innerHTML='<div class="empty">No months saved yet.</div>';return;}
     renderGrid();
@@ -150,7 +204,7 @@ async function loadMonth(mk){
   if(!session){ra.innerHTML='<div class="empty">Session not found.</div>';return;}
 
   // Load transactions
-  var r=await fetch(SB_URL+'/rest/v1/monthly_transactions?month_key=eq.'+mk+'&select=*&order=date.asc',{headers:sbH()});
+  var r=await fetch(SB_URL+'/rest/v1/monthly_transactions?month_key=eq.'+mk+'&select=*&order=date.asc',{headers:await sbHeaders()});
   var txs=await r.json();
 
   var income=txs.filter(function(t){return t.is_income;});
@@ -222,8 +276,6 @@ async function loadMonth(mk){
 
   ra.innerHTML=h;
 }
-
-document.getElementById('pwInput').focus();
 </script>
 </body>
 </html>

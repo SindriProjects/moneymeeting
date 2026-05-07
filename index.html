@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Finance Analyzer</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#f5f4f0;--surface:#fff;--surface2:#f0efe9;--border:#e2e0d8;--border2:#ccc9be;--text:#1a1916;--text2:#6b6860;--text3:#9e9b94;--green:#1a7a4a;--green-bg:#eaf4ee;--green-bd:#b6dfc6;--red:#c0392b;--red-bg:#fdf0ee;--red-bd:#f0b8b2;--amber:#8a5c00;--amber-bg:#fdf6e3;--amber-bd:#f0d898;--r:8px;--rl:12px;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -136,10 +137,34 @@ tr:last-child td{border-bottom:none;}
 .report-print-sub{display:none;font-size:12px;color:var(--text2);margin-bottom:24px;}
 @media print{.report-print-sub{display:block;}}
 #miscPrintTable{display:none;}
+.auth-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px;}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:2rem 2.5rem;text-align:center;width:100%;max-width:360px;}
+.auth-title{font-size:16px;font-weight:500;margin-bottom:4px;}
+.auth-sub{font-size:13px;color:var(--text3);margin-bottom:20px;}
+.auth-input{width:100%;font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 12px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface2);color:var(--text);margin-bottom:10px;}
+.auth-input:focus{outline:none;border-color:var(--text3);}
+.auth-btn{width:100%;padding:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;border-radius:var(--r);border:none;background:var(--text);color:#fff;cursor:pointer;margin-bottom:8px;}
+.auth-btn:hover{opacity:.85;}
+.auth-btn:disabled{opacity:.5;cursor:not-allowed;}
+.auth-btn-sec{background:transparent;border:1px solid var(--border2);color:var(--text2);}
+.auth-btn-sec:hover{background:var(--surface2);color:var(--text);opacity:1;}
+.auth-err{font-size:12px;color:var(--red);min-height:18px;margin-top:4px;}
 </style>
 </head>
 <body>
 <div class="shell">
+  <div id="authScreen" class="auth-screen" style="display:none;">
+    <div class="auth-card">
+      <div class="auth-title" id="authTitle">Sign in</div>
+      <div class="auth-sub" id="authSub">Access your finance data</div>
+      <input type="email" class="auth-input" id="authEmail" placeholder="Email address" autocomplete="email">
+      <input type="password" class="auth-input" id="authPassword" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth()">
+      <button class="auth-btn" id="authSubmit" onclick="doAuth()">Sign in</button>
+      <button class="auth-btn auth-btn-sec" id="authToggleBtn" onclick="toggleAuthMode()">Create account instead</button>
+      <div class="auth-err" id="authErr"></div>
+    </div>
+  </div>
+  <div id="appArea" style="display:none;">
   <div class="header">
     <div>
       <div class="logo">Finance <span>/ Analyzer</span></div>
@@ -150,6 +175,7 @@ tr:last-child td{border-bottom:none;}
       <span id="saveStatus" style="font-size:12px;color:var(--text3);transition:opacity 0.5s;opacity:0;"></span>
       <button class="btn no-print" id="saveMonthBtn" style="display:none" onclick="saveAndCloseMonth()">Close month</button>
       <button class="btn btn-green no-print" id="printBtn" style="display:none" onclick="window.print()">Print / Save PDF</button>
+      <button class="btn no-print" id="logoutBtn" onclick="doSignOut()" style="display:none;">Sign out</button>
     </div>
   </div>
 
@@ -170,6 +196,7 @@ tr:last-child td{border-bottom:none;}
   <button class="btn btn-primary btn-run" id="runBtn" disabled>Run analysis</button>
   <div id="err"></div>
   <div id="report"></div>
+  </div><!-- #appArea -->
 </div>
 
 <div class="toast" id="toast">
@@ -193,7 +220,61 @@ window.addEventListener('unhandledrejection',function(e){
 });
 const SB_URL='https://spuwzdnuxmqnblpbdtoq.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwdXd6ZG51eG1xbmJscGJkdG9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MDEzMDcsImV4cCI6MjA5MjA3NzMwN30.xtnLIvBm5DVrQAVn9W2g3wowVyqRz5DBxCtyWJj-XjA';
-function sbHeaders(){return{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'};}
+const _supabase=supabase.createClient(SB_URL,SB_KEY);
+async function sbHeaders(){
+  var s=await _supabase.auth.getSession();
+  var token=s.data.session?s.data.session.access_token:SB_KEY;
+  return{'apikey':SB_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'};
+}
+async function currentUserId(){
+  var s=await _supabase.auth.getSession();
+  return s.data.session?s.data.session.user.id:null;
+}
+
+var _authMode='signin';
+function toggleAuthMode(){
+  _authMode=_authMode==='signin'?'signup':'signin';
+  var isSignup=_authMode==='signup';
+  document.getElementById('authTitle').textContent=isSignup?'Create account':'Sign in';
+  document.getElementById('authSub').textContent=isSignup?'Set up your finance account':'Access your finance data';
+  document.getElementById('authSubmit').textContent=isSignup?'Create account':'Sign in';
+  document.getElementById('authToggleBtn').textContent=isSignup?'Sign in instead':'Create account instead';
+  document.getElementById('authErr').textContent='';
+}
+async function doAuth(){
+  var email=document.getElementById('authEmail').value.trim();
+  var password=document.getElementById('authPassword').value;
+  var errEl=document.getElementById('authErr');
+  errEl.textContent='';
+  if(!email||!password){errEl.textContent='Email and password required.';return;}
+  document.getElementById('authSubmit').disabled=true;
+  document.getElementById('authSubmit').textContent='Please wait...';
+  var result=_authMode==='signup'
+    ?await _supabase.auth.signUp({email:email,password:password})
+    :await _supabase.auth.signInWithPassword({email:email,password:password});
+  document.getElementById('authSubmit').disabled=false;
+  document.getElementById('authSubmit').textContent=_authMode==='signup'?'Create account':'Sign in';
+  if(result.error){errEl.textContent=result.error.message;return;}
+  if(result.data&&result.data.session){showApp();}
+  else if(_authMode==='signup'){errEl.textContent='Check your email to confirm your account, then sign in.';}
+}
+async function doSignOut(){
+  await _supabase.auth.signOut();
+  showAuthScreen();
+}
+function showAuthScreen(){
+  document.getElementById('authScreen').style.display='flex';
+  document.getElementById('appArea').style.display='none';
+  document.getElementById('logoutBtn').style.display='none';
+}
+function showApp(){
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('appArea').style.display='block';
+  document.getElementById('logoutBtn').style.display='';
+}
+_supabase.auth.onAuthStateChange(function(event,session){
+  if(event==='SIGNED_OUT'||!session)showAuthScreen();
+});
 const GH_OWNER='eriklangaardsolberg-svg',GH_REPO='moneymeeting',GH_FILE='rules.json',GH_BRANCH='main';
 const DEFAULT_CATS=['Groceries','Transport','Budgeted fixed costs','Childcare','Cleaning','Subscriptions','Wolt','Bakeries','Restaurants','Health & wellbeing','Shopping','Travel','Entertainment','Flowers','Gifts','Professional fees','Education','Insurance','Tax','Books','Kiosk','Misc'];
 let CATEGORIES=[...DEFAULT_CATS];
@@ -336,6 +417,8 @@ async function connectGitHub(){
   document.querySelector('.gh-bar').style.display='none';
 }
 window.addEventListener('load',async function(){
+  var s=await _supabase.auth.getSession();
+  if(s.data.session){showApp();}else{showAuthScreen();}
   var stored=localStorage.getItem('gh_token');
   if(stored){
     ghToken=stored;
@@ -416,7 +499,7 @@ function getMonthLabel(d1){return d1.toLocaleString('en-GB',{month:'long',year:'
 
 async function sbLoadSession(monthKey){
   try{
-    var r=await fetch(SB_URL+'/rest/v1/monthly_sessions?month_key=eq.'+monthKey+'&select=*',{headers:sbHeaders()});
+    var r=await fetch(SB_URL+'/rest/v1/monthly_sessions?month_key=eq.'+monthKey+'&select=*',{headers:await sbHeaders()});
     var rows=await r.json();
     return rows.length>0?rows[0]:null;
   }catch(e){console.warn('Supabase load failed',e);return null;}
@@ -440,8 +523,10 @@ async function sbSaveSession(d1,report,baseTransactions){
   var seenUids={};
   var txs=[];
   classifiedTxs.concat(allBaseTxs).forEach(function(t){if(!seenUids[t.uid]){seenUids[t.uid]=true;txs.push(t);}});
+  var uid_val=await currentUserId();
   if(txs.length>0){
-    await fetch(SB_URL+'/rest/v1/monthly_transactions',{method:'POST',headers:sbHeaders(),body:JSON.stringify(txs)});
+    var txsWithUser=txs.map(function(t){return Object.assign({},t,{user_id:uid_val});});
+    await fetch(SB_URL+'/rest/v1/monthly_transactions',{method:'POST',headers:await sbHeaders(),body:JSON.stringify(txsWithUser)});
   }
   // Upsert session state
   var session={
@@ -456,11 +541,12 @@ async function sbSaveSession(d1,report,baseTransactions){
     categories:CATEGORIES,
     manual_expenses:manualExpenses,
     status:'in_progress',
-    updated_at:new Date().toISOString()
+    updated_at:new Date().toISOString(),
+    user_id:uid_val
   };
   console.log('[SB] Saving session, overrides:', JSON.stringify(session.overrides));
   console.log('[SB] Saving transfer_state:', JSON.stringify(session.transfer_state));
-  var saveResp=await fetch(SB_URL+'/rest/v1/monthly_sessions',{method:'POST',headers:Object.assign({},sbHeaders(),{'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(session)});
+  var saveResp=await fetch(SB_URL+'/rest/v1/monthly_sessions',{method:'POST',headers:await sbHeaders(),body:JSON.stringify(session)});
   console.log('[SB] Save response status:', saveResp.status);
   setSaveStatus('Saved to cloud');
 }
@@ -498,7 +584,7 @@ async function saveAndCloseMonth(){
   var monthKey=getMonthKey(lastReport.d1);
   await fetch(SB_URL+'/rest/v1/monthly_sessions?month_key=eq.'+monthKey,{
     method:'PATCH',
-    headers:sbHeaders(),
+    headers:await sbHeaders(),
     body:JSON.stringify({status:'closed',updated_at:new Date().toISOString()})
   });
   setSaveStatus('Month closed and saved');
