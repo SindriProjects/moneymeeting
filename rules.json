@@ -242,17 +242,17 @@
     },
     {
       "m": "contains",
+      "v": "godt brÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¸d there",
+      "cat": "Bakeries"
+    },
+    {
+      "m": "contains",
       "v": "godt brÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¸d there",
       "cat": "Bakeries"
     },
     {
       "m": "contains",
       "v": "godt brÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¸d there",
-      "cat": "Bakeries"
-    },
-    {
-      "m": "contains",
-      "v": "godt brÃÂÃÂÃÂÃÂ¸d there",
       "cat": "Bakeries"
     },
     {
@@ -287,12 +287,12 @@
     },
     {
       "m": "contains",
-      "v": "godt brÃÂÃÂ¸d there",
+      "v": "godt brÃÂÃÂÃÂÃÂ¸d there",
       "cat": "Bakeries"
     },
     {
       "m": "contains",
-      "v": "godt brÃÂ¸d there",
+      "v": "godt brÃÂÃÂ¸d there",
       "cat": "Bakeries"
     },
     {
@@ -302,7 +302,7 @@
     },
     {
       "m": "contains",
-      "v": "klÃ¦r til jentene",
+      "v": "klÃÂ¦r til jentene",
       "cat": "Barneutgifter"
     },
     {
@@ -317,12 +317,12 @@
     },
     {
       "m": "contains",
-      "v": "lÃ¥n 1516.01.99714",
+      "v": "lÃÂ¥n 1516.01.99714",
       "cat": "Budgeted fixed costs"
     },
     {
       "m": "contains",
-      "v": "tjÃ¸me faste utgifter",
+      "v": "tjÃÂ¸me faste utgifter",
       "cat": "Budgeted fixed costs"
     },
     {
@@ -332,7 +332,7 @@
     },
     {
       "m": "contains",
-      "v": "godt brÃ¸d there",
+      "v": "godt brÃÂ¸d there",
       "cat": "Bakeries"
     },
     {
@@ -372,12 +372,12 @@
     },
     {
       "m": "contains",
-      "v": "lån 1516.01.99714",
+      "v": "lÃ¥n 1516.01.99714",
       "cat": "Budgeted fixed costs"
     },
     {
       "m": "contains",
-      "v": "tjøme faste utgifter",
+      "v": "tjÃ¸me faste utgifter",
       "cat": "Budgeted fixed costs"
     },
     {
@@ -392,13 +392,18 @@
     },
     {
       "m": "contains",
-      "v": "godt brød there",
+      "v": "godt brÃ¸d there",
       "cat": "Bakeries"
     },
     {
       "m": "contains",
       "v": "clas ohl 2875",
       "cat": "Huskostnader"
+    },
+    {
+      "m": "contains",
+      "v": "ullevålseter sp",
+      "cat": "Bakeries"
     }
   ],
   "categories": [
@@ -426,6 +431,6 @@
     "Pub, Bar etc",
     "Barneutgifter",
     "Huskostnader",
-    "Klær til voksne"
+    "KlÃ¦r til voksne"
   ]
 }
