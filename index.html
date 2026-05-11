@@ -530,7 +530,8 @@ async function sbSaveSession(d1,report,baseTransactions){
   var txs=[];
   classifiedTxs.concat(omittedTxs,internalTxs,allBaseTxs).forEach(function(t){if(!seenUids[t.uid]){seenUids[t.uid]=true;txs.push(t);}});
   if(txs.length>0){
-    await fetch(SB_URL+'/rest/v1/monthly_transactions',{method:'POST',headers:await sbHeaders(),body:JSON.stringify(txs)});
+    var txResp=await fetch(SB_URL+'/rest/v1/monthly_transactions',{method:'POST',headers:await sbHeaders(),body:JSON.stringify(txs)});
+    if(!txResp.ok){var txErr=await txResp.text();throw new Error('Transaction save failed ('+txResp.status+'): '+txErr);}
   }
   // Upsert session state
   var session={
@@ -544,8 +545,6 @@ async function sbSaveSession(d1,report,baseTransactions){
     fixed_paid:window._fixedPaid||{},
     categories:CATEGORIES,
     manual_expenses:manualExpenses,
-    days_elapsed:report.daysElapsed,
-    days_in_month:report.daysInMonth,
     status:'in_progress',
     updated_at:new Date().toISOString()
   };
@@ -553,6 +552,7 @@ async function sbSaveSession(d1,report,baseTransactions){
   console.log('[SB] Saving transfer_state:', JSON.stringify(session.transfer_state));
   var saveResp=await fetch(SB_URL+'/rest/v1/monthly_sessions',{method:'POST',headers:await sbHeaders(),body:JSON.stringify(session)});
   console.log('[SB] Save response status:', saveResp.status);
+  if(!saveResp.ok){var sessErr=await saveResp.text();throw new Error('Session save failed ('+saveResp.status+'): '+sessErr);}
   setSaveStatus('Saved to cloud');
 }
 
