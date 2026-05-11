@@ -207,8 +207,9 @@ async function loadMonth(mk){
   var r=await fetch(SB_URL+'/rest/v1/monthly_transactions?month_key=eq.'+mk+'&select=*&order=date.asc',{headers:await sbHeaders()});
   var txs=await r.json();
 
-  var income=txs.filter(function(t){return t.is_income;});
-  var expenses=txs.filter(function(t){return!t.is_income;});
+  // Exclude system-marked transactions from totals: _omitted (other month) and _transfer_* (internal)
+  var income=txs.filter(function(t){return t.is_income&&t.category.indexOf('_transfer_')<0;});
+  var expenses=txs.filter(function(t){return!t.is_income&&t.category!=='_omitted'&&t.category.indexOf('_transfer_')<0;});
 
   // Group expenses by category
   var byCat={};
@@ -219,9 +220,11 @@ async function loadMonth(mk){
   var net=totalIncome-totalExp;
 
   var inProg=session.status==='in_progress';
+  var isPartial=session.days_elapsed&&session.days_in_month&&session.days_elapsed<session.days_in_month-1;
 
-  var h='<div class="period-label">'+session.month_label+(inProg?' · in progress':'')+'</div>';
+  var h='<div class="period-label">'+session.month_label+(inProg?' · in progress':isPartial?' · partial month':'')+'</div>';
   if(inProg) h+='<div class="inprog-notice">This month is still in progress. Data shown reflects the last upload.</div>';
+  if(isPartial&&!inProg) h+='<div class="inprog-notice">Partial month: '+session.days_elapsed+' of '+session.days_in_month+' days covered.</div>';
 
   // Summary metrics
   h+='<div class="metrics">'
@@ -249,6 +252,23 @@ async function loadMonth(mk){
       return '<tr><td>'+cat+'</td><td class="tr">'+fmt(total)+'</td></tr>';
     }).join('')
     +'<tr><td class="bold">Total</td><td class="tr bold">'+fmt(totalIncome)+'</td></tr>'
+    +'</table></div></div>';
+
+  // Budget vs actual — variable costs
+  var BUDGET_VAR={Groceries:15000,Transport:4000,Cleaning:3840,Childcare:2640,Subscriptions:2000};
+  var BUDGET_FIXED_AMT=40261;
+  function varCell(actual,budget){var v=budget-actual;if(Math.abs(v)<50)return'<span style="color:var(--text3)">on budget</span>';return v>0?'<span style="color:var(--green)">+'+fmt(v)+'</span>':'<span style="color:var(--red)">'+fmt(v)+'</span>';}
+  var varRows=Object.keys(BUDGET_VAR).map(function(cat){return{cat:cat,budget:BUDGET_VAR[cat],actual:(byCat[cat]||[]).reduce(function(s,t){return s+t.amount;},0)};});
+  var fixedActual=(byCat['Budgeted fixed costs']||[]).reduce(function(s,t){return s+t.amount;},0);
+  h+='<div class="section"><div class="section-title">Variable costs — budget vs actual</div><div class="table-wrap"><table>'
+    +'<tr><th>Category</th><th class="tr">Budget</th><th class="tr">Actual</th><th class="tr">Variance</th></tr>'
+    +varRows.map(function(r){
+      return'<tr><td>'+r.cat+'</td><td class="tr muted">'+fmt(r.budget)+'</td><td class="tr">'+fmt(r.actual)+'</td><td class="tr">'+varCell(r.actual,r.budget)+'</td></tr>';
+    }).join('')
+    +'</table></div></div>';
+  h+='<div class="section"><div class="section-title">Fixed costs — budget vs actual</div><div class="table-wrap"><table>'
+    +'<tr><th>Category</th><th class="tr">Budget</th><th class="tr">Actual</th><th class="tr">Variance</th></tr>'
+    +'<tr><td>Fixed costs — budgeted</td><td class="tr muted">'+fmt(BUDGET_FIXED_AMT)+'</td><td class="tr">'+fmt(fixedActual)+'</td><td class="tr">'+varCell(fixedActual,BUDGET_FIXED_AMT)+'</td></tr>'
     +'</table></div></div>';
 
   // Expenses by category

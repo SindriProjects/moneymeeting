@@ -505,20 +505,30 @@ async function sbSaveSession(d1,report,baseTransactions){
   baseTransactions=baseTransactions||[];
   var monthKey=getMonthKey(d1);
   var monthLabel=getMonthLabel(d1);
-  // Save ALL base transactions (including omitted/reclassified ones)
-  var allBaseTxs=report.allInternals?[]:[];
-  if(report.baseTransactions){
-    allBaseTxs=baseTransactions.map(function(t){
-      return{month_key:monthKey,uid:uid(t),date:t.date,description:t.desc,amount:t.amount,category:t.cat,is_income:!!t.isIncome,ut:t.ut||0,inn:t.inn||0};
-    });
-  }
+  // Build set of omitted UIDs so we can mark them explicitly in storage
+  var omittedUids={};
+  Object.keys(txOverrides).forEach(function(k){if(txOverrides[k]&&txOverrides[k].omit)omittedUids[k]=true;});
+  // Classified (non-omitted) transactions — highest priority in merge
   var classifiedTxs=Object.values(report.byCategory).flat().concat(report.income).map(function(t){
     return{month_key:monthKey,uid:uid(t),date:t.date,description:t.desc,amount:t.amount,category:t.cat,is_income:!!t.isIncome,ut:t.ut||0,inn:t.inn||0};
   });
-  // Merge: base txs first, then classified (classified takes priority via upsert)
+  // Omitted base transactions — stored with category '_omitted' so history excludes them from totals
+  var omittedTxs=baseTransactions.filter(function(t){return omittedUids[uid(t)];}).map(function(t){
+    return{month_key:monthKey,uid:uid(t),date:t.date,description:t.desc,amount:t.amount,category:'_omitted',is_income:false,ut:t.ut||0,inn:t.inn||0};
+  });
+  // Internal transfers — stored with category '_transfer_<state>' so history can show/exclude them
+  var internalTxs=(report.allInternals||[]).map(function(t){
+    var tuid=uid(t),state=transferState[tuid]||'excluded';
+    return{month_key:monthKey,uid:tuid,date:t.date,description:t.desc,amount:t.inn||t.ut,category:'_transfer_'+state,is_income:state==='income',ut:t.ut||0,inn:t.inn||0};
+  });
+  // Remaining base txs as fallback (non-omitted, not already classified)
+  var allBaseTxs=baseTransactions.filter(function(t){return!omittedUids[uid(t)];}).map(function(t){
+    return{month_key:monthKey,uid:uid(t),date:t.date,description:t.desc,amount:t.amount,category:t.cat,is_income:!!t.isIncome,ut:t.ut||0,inn:t.inn||0};
+  });
+  // Merge: classified > omitted > internals > base (first-seen wins)
   var seenUids={};
   var txs=[];
-  classifiedTxs.concat(allBaseTxs).forEach(function(t){if(!seenUids[t.uid]){seenUids[t.uid]=true;txs.push(t);}});
+  classifiedTxs.concat(omittedTxs,internalTxs,allBaseTxs).forEach(function(t){if(!seenUids[t.uid]){seenUids[t.uid]=true;txs.push(t);}});
   if(txs.length>0){
     await fetch(SB_URL+'/rest/v1/monthly_transactions',{method:'POST',headers:await sbHeaders(),body:JSON.stringify(txs)});
   }
@@ -534,6 +544,8 @@ async function sbSaveSession(d1,report,baseTransactions){
     fixed_paid:window._fixedPaid||{},
     categories:CATEGORIES,
     manual_expenses:manualExpenses,
+    days_elapsed:report.daysElapsed,
+    days_in_month:report.daysInMonth,
     status:'in_progress',
     updated_at:new Date().toISOString()
   };
