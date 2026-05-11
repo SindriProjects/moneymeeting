@@ -409,6 +409,11 @@
       "m": "contains",
       "v": "deli de luca",
       "cat": "Bakeries"
+    },
+    {
+      "m": "contains",
+      "v": "w b samson",
+      "cat": "Bakeries"
     }
   ],
   "categories": [
