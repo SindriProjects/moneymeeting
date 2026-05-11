@@ -529,11 +529,15 @@ async function sbSaveSession(d1,report,baseTransactions){
   var seenUids={};
   var txs=[];
   classifiedTxs.concat(omittedTxs,internalTxs,allBaseTxs).forEach(function(t){if(!seenUids[t.uid]){seenUids[t.uid]=true;txs.push(t);}});
+  // Save transactions: delete existing rows for the month then re-insert (avoids upsert/unique-constraint issues)
+  var hdrs=await sbHeaders();
+  var simpleHdrs={'apikey':hdrs['apikey'],'Authorization':hdrs['Authorization'],'Content-Type':'application/json'};
+  await fetch(SB_URL+'/rest/v1/monthly_transactions?month_key=eq.'+monthKey,{method:'DELETE',headers:simpleHdrs});
   if(txs.length>0){
-    var txResp=await fetch(SB_URL+'/rest/v1/monthly_transactions',{method:'POST',headers:await sbHeaders(),body:JSON.stringify(txs)});
+    var txResp=await fetch(SB_URL+'/rest/v1/monthly_transactions',{method:'POST',headers:simpleHdrs,body:JSON.stringify(txs)});
     if(!txResp.ok){var txErr=await txResp.text();console.warn('[SB] Transaction save failed ('+txResp.status+'):', txErr);}
   }
-  // Upsert session state
+  // Save session: PATCH if exists, POST if new
   var session={
     month_key:monthKey,
     month_label:monthLabel,
@@ -548,11 +552,12 @@ async function sbSaveSession(d1,report,baseTransactions){
     status:'in_progress',
     updated_at:new Date().toISOString()
   };
-  console.log('[SB] Saving session, overrides:', JSON.stringify(session.overrides));
-  console.log('[SB] Saving transfer_state:', JSON.stringify(session.transfer_state));
-  var saveResp=await fetch(SB_URL+'/rest/v1/monthly_sessions',{method:'POST',headers:await sbHeaders(),body:JSON.stringify(session)});
-  console.log('[SB] Save response status:', saveResp.status);
-  if(!saveResp.ok){var sessErr=await saveResp.text();throw new Error('Session save failed ('+saveResp.status+'): '+sessErr);}
+  var patchResp=await fetch(SB_URL+'/rest/v1/monthly_sessions?month_key=eq.'+monthKey,{method:'PATCH',headers:Object.assign({},simpleHdrs,{'Prefer':'return=representation'}),body:JSON.stringify(session)});
+  var patched=patchResp.ok?await patchResp.json():[];
+  if(!Array.isArray(patched)||patched.length===0){
+    var postResp=await fetch(SB_URL+'/rest/v1/monthly_sessions',{method:'POST',headers:simpleHdrs,body:JSON.stringify(session)});
+    if(!postResp.ok){var sessErr=await postResp.text();throw new Error('Session save failed ('+postResp.status+'): '+sessErr);}
+  }
   setSaveStatus('Saved to cloud');
 }
 
