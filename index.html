@@ -531,7 +531,7 @@ async function sbSaveSession(d1,report,baseTransactions){
   classifiedTxs.concat(omittedTxs,internalTxs,allBaseTxs).forEach(function(t){if(!seenUids[t.uid]){seenUids[t.uid]=true;txs.push(t);}});
   if(txs.length>0){
     var txResp=await fetch(SB_URL+'/rest/v1/monthly_transactions',{method:'POST',headers:await sbHeaders(),body:JSON.stringify(txs)});
-    if(!txResp.ok){var txErr=await txResp.text();throw new Error('Transaction save failed ('+txResp.status+'): '+txErr);}
+    if(!txResp.ok){var txErr=await txResp.text();console.warn('[SB] Transaction save failed ('+txResp.status+'):', txErr);}
   }
   // Upsert session state
   var session={
