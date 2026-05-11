@@ -404,6 +404,11 @@
       "m": "contains",
       "v": "ullevålseter sp",
       "cat": "Bakeries"
+    },
+    {
+      "m": "contains",
+      "v": "deli de luca",
+      "cat": "Bakeries"
     }
   ],
   "categories": [
