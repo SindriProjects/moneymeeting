@@ -474,6 +474,11 @@
       "m": "contains",
       "v": "bokhandlarens pub",
       "cat": "Restaurants"
+    },
+    {
+      "m": "contains",
+      "v": "aleris medical",
+      "cat": "Health & wellbeing"
     }
   ],
   "categories": [
