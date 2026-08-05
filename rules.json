@@ -464,6 +464,11 @@
       "m": "contains",
       "v": "tesla inc.",
       "cat": "Transport"
+    },
+    {
+      "m": "contains",
+      "v": "væsttrafik-km",
+      "cat": "Transport"
     }
   ],
   "categories": [
