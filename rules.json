@@ -484,6 +484,11 @@
       "m": "contains",
       "v": "lille prinsen",
       "cat": "Barneutgifter"
+    },
+    {
+      "m": "contains",
+      "v": "barnas hus",
+      "cat": "Barneutgifter"
     }
   ],
   "categories": [
