@@ -479,6 +479,11 @@
       "m": "contains",
       "v": "aleris medical",
       "cat": "Health & wellbeing"
+    },
+    {
+      "m": "contains",
+      "v": "lille prinsen",
+      "cat": "Barneutgifter"
     }
   ],
   "categories": [
