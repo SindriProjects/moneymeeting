@@ -459,6 +459,11 @@
       "m": "contains",
       "v": "152 jernia",
       "cat": "Huskostnader"
+    },
+    {
+      "m": "contains",
+      "v": "tesla inc.",
+      "cat": "Transport"
     }
   ],
   "categories": [
