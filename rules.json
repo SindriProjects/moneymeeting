@@ -454,6 +454,11 @@
       "m": "contains",
       "v": "blanch as",
       "cat": "Restaurants"
+    },
+    {
+      "m": "contains",
+      "v": "152 jernia",
+      "cat": "Huskostnader"
     }
   ],
   "categories": [
