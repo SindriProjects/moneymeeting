@@ -576,10 +576,12 @@ async function sbSaveSession(d1,report,baseTransactions){
   // Save transactions: delete existing rows for the month then re-insert (avoids upsert/unique-constraint issues)
   var hdrs=await sbHeaders();
   var simpleHdrs={'apikey':hdrs['apikey'],'Authorization':hdrs['Authorization'],'Content-Type':'application/json'};
-  await fetch(SB_URL+'/rest/v1/monthly_transactions?month_key=eq.'+monthKey,{method:'DELETE',headers:simpleHdrs});
+  var txError=null;
+  var delResp=await fetch(SB_URL+'/rest/v1/monthly_transactions?month_key=eq.'+monthKey,{method:'DELETE',headers:simpleHdrs});
+  if(!delResp.ok){var delErr=await delResp.text();txError='delete '+delResp.status+': '+delErr;console.warn('[SB] Transaction delete failed:',txError);}
   if(txs.length>0){
     var txResp=await fetch(SB_URL+'/rest/v1/monthly_transactions',{method:'POST',headers:simpleHdrs,body:JSON.stringify(txs)});
-    if(!txResp.ok){var txErr=await txResp.text();console.warn('[SB] Transaction save failed ('+txResp.status+'):', txErr);}
+    if(!txResp.ok){var txErr=await txResp.text();txError='insert '+txResp.status+': '+txErr;console.warn('[SB] Transaction save failed:',txError);}
   }
   // Save session: PATCH if exists, POST if new
   var proj=computeProjection(report);
@@ -605,6 +607,8 @@ async function sbSaveSession(d1,report,baseTransactions){
       projected_expenses:proj.projExp,
       projected_net:proj.projNet
     }:null,
+    days_elapsed:report.daysElapsed,
+    days_in_month:report.daysInMonth,
     status:'in_progress',
     updated_at:new Date().toISOString()
   };
@@ -616,15 +620,29 @@ async function sbSaveSession(d1,report,baseTransactions){
     var por=await fetch(SB_URL+'/rest/v1/monthly_sessions',{method:'POST',headers:simpleHdrs,body:JSON.stringify(body)});
     return{ok:por.ok,resp:por};
   }
-  var sessResult=await _doSessionWrite(session);
-  if(!sessResult.ok&&session.projection){
-    // Schema may lack the projection JSONB column - retry without it so the rest of the session still saves
-    console.warn('[SB] projection field rejected. To persist projection snapshots in history, run on your Supabase project: ALTER TABLE monthly_sessions ADD COLUMN projection JSONB;');
-    var sessionLite=Object.assign({},session);delete sessionLite.projection;
-    sessResult=await _doSessionWrite(sessionLite);
+  // PostgREST rejects the whole row if any payload key has no matching column
+  // (PGRST204). Drop the named column and retry so schema drift degrades a
+  // field at a time instead of losing the entire save.
+  var body=session,droppedCols=[],sessResult=null,sessErrText='';
+  for(var attempt=0;attempt<12;attempt++){
+    sessResult=await _doSessionWrite(body);
+    if(sessResult.ok)break;
+    sessErrText=await sessResult.resp.text();
+    var colMatch=/Could not find the '([^']+)' column/.exec(sessErrText);
+    var col=colMatch&&colMatch[1];
+    if(!col||!(col in body))break;
+    droppedCols.push(col);
+    body=Object.assign({},body);delete body[col];
   }
-  if(!sessResult.ok){var sessErr=await sessResult.resp.text();throw new Error('Session save failed ('+sessResult.resp.status+'): '+sessErr);}
-  setSaveStatus('Saved to cloud');
+  if(!sessResult.ok)throw new Error('Session save failed ('+sessResult.resp.status+'): '+sessErrText);
+  if(txError){
+    setSaveStatus('Session saved, but transactions failed — '+txError,true);
+  }else if(droppedCols.length){
+    console.warn('[SB] DB is missing columns: '+droppedCols.join(', ')+'. Run the migration in the repo notes to store them.');
+    setSaveStatus('Saved, except missing DB columns: '+droppedCols.join(', '),true);
+  }else{
+    setSaveStatus('Saved to cloud');
+  }
 }
 
 async function sbMergeAndLoad(d1){
@@ -650,19 +668,26 @@ async function sbMergeAndLoad(d1){
   return true;
 }
 
-function setSaveStatus(msg){
+var saveStatusTimer=null;
+function setSaveStatus(msg,isError){
   var el=document.getElementById('saveStatus');
-  if(el){el.textContent=msg;el.style.opacity='1';setTimeout(function(){el.style.opacity='0';},3000);}
+  if(!el)return;
+  el.textContent=msg;
+  el.style.color=isError?'var(--red)':'var(--text3)';
+  el.style.opacity='1';
+  if(saveStatusTimer)clearTimeout(saveStatusTimer);
+  saveStatusTimer=setTimeout(function(){el.style.opacity='0';},isError?15000:3000);
 }
 
 async function saveAndCloseMonth(){
   if(!lastReport)return;
   var monthKey=getMonthKey(lastReport.d1);
-  await fetch(SB_URL+'/rest/v1/monthly_sessions?month_key=eq.'+monthKey,{
+  var resp=await fetch(SB_URL+'/rest/v1/monthly_sessions?month_key=eq.'+monthKey,{
     method:'PATCH',
     headers:await sbHeaders(),
     body:JSON.stringify({status:'closed',updated_at:new Date().toISOString()})
   });
+  if(!resp.ok){var err=await resp.text();setSaveStatus('Close failed ('+resp.status+'): '+err,true);return;}
   setSaveStatus('Month closed and saved');
 }
 
@@ -757,7 +782,7 @@ async function saveToHistory(){
     setTimeout(function(){btn.disabled=false;btn.textContent='Save to history';},2000);
   }catch(e){
     btn.disabled=false; btn.textContent='Save to history';
-    setSaveStatus('Save failed');
+    setSaveStatus('Save failed — '+(e&&e.message?e.message:e),true);
   }
 }
 
