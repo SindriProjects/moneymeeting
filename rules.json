@@ -504,6 +504,11 @@
       "m": "contains",
       "v": "vasttrafik to go",
       "cat": "Transport"
+    },
+    {
+      "m": "contains",
+      "v": "ica nara stromstad",
+      "cat": "Groceries"
     }
   ],
   "categories": [
