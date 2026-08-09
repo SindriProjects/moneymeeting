@@ -499,6 +499,11 @@
       "m": "contains",
       "v": "jewel as",
       "cat": "Restaurants"
+    },
+    {
+      "m": "contains",
+      "v": "vasttrafik to go",
+      "cat": "Transport"
     }
   ],
   "categories": [
