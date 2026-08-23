@@ -77,7 +77,27 @@ tr:last-child td{border-bottom:none;}
 
 /* In-progress notice */
 .inprog-notice{background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--amber);margin-bottom:16px;}
+.bb-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px 8px;}
+.bb-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--text2);margin:0 0 14px;}
+.bb-legend>span{display:inline-flex;align-items:center;gap:6px;}
+.bb-lg{width:22px;height:10px;border-radius:3px;}
+.bb-lg-dotted{border:1.5px dashed var(--border2);background:transparent;box-sizing:border-box;}
+.bb-group-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);font-weight:500;margin:14px 0 10px;}
+.bb-row{display:grid;grid-template-columns:120px 1fr 90px;gap:10px;align-items:center;margin-bottom:12px;}
+.bb-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bb-amts{font-size:10.5px;color:var(--text3);white-space:nowrap;}
+.bb-track{position:relative;height:26px;}
+.bb-budget{position:absolute;left:0;top:0;bottom:0;border:1.5px dashed var(--border2);border-radius:6px;box-sizing:border-box;z-index:1;pointer-events:none;}
+.bb-actual{position:absolute;left:0;top:5px;bottom:5px;border-radius:4px;min-width:3px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.bb-ok{background:var(--green);}
+.bb-over{background:var(--red);}
+.bb-neutral{background:#b8b5ac;}
+.bb-delta{font-size:12px;font-weight:500;text-align:right;white-space:nowrap;}
+.bb-delta small{font-size:10px;font-weight:400;color:var(--text3);}
+.bb-delta.pos{color:var(--green);}
+.bb-delta.neg{color:var(--red);}
 @media (max-width:640px){
+  .bb-row{grid-template-columns:1fr;gap:4px;margin-bottom:14px;}
   .shell{padding:20px 14px 60px;}
   .header{margin-bottom:20px;}
   .logo{font-size:19px;}
@@ -182,6 +202,44 @@ window.addEventListener('load',async function(){
 
 var sessions=[], activeMk=null;
 
+function budgetBarsHtml(groups){
+  var h='<div class="bb-legend">'
+    +'<span><span class="bb-lg bb-lg-dotted"></span>Budget</span>'
+    +'<span><span class="bb-lg bb-ok"></span>Under budget</span>'
+    +'<span><span class="bb-lg bb-over"></span>Over budget</span>'
+    +'<span><span class="bb-lg bb-neutral"></span>No budget</span>'
+    +'</div>';
+  groups.forEach(function(g){
+    if(!g.rows.length)return;
+    var max=0;g.rows.forEach(function(r){max=Math.max(max,r.budget||0,r.actual);});
+    if(max<=0)return;
+    h+='<div class="bb-group-label">'+g.label+'</div>';
+    g.rows.forEach(function(r){
+      var bw=r.budget?(r.budget/max*100):0,aw=r.actual/max*100;
+      var cls=r.budget==null?'bb-neutral':(r.actual>r.budget?'bb-over':'bb-ok');
+      var amts=r.budget!=null?fmt(r.actual)+' of '+fmt(r.budget):'no budget';
+      var delta;
+      if(r.budget==null){
+        delta='<div class="bb-delta" style="color:var(--text3);font-weight:400">'+fmt(r.actual)+'</div>';
+      }else{
+        var dv=r.budget-r.actual;
+        delta=dv>=0
+          ?'<div class="bb-delta pos">'+fmt(dv)+' <small>left</small></div>'
+          :'<div class="bb-delta neg">+'+fmt(-dv)+' <small>over</small></div>';
+      }
+      h+='<div class="bb-row">'
+        +'<div><div class="bb-name">'+r.name+'</div><div class="bb-amts">'+amts+'</div></div>'
+        +'<div class="bb-track">'
+          +(r.budget!=null?'<div class="bb-budget" style="width:'+bw.toFixed(1)+'%"></div>':'')
+          +'<div class="bb-actual '+cls+'" style="width:'+aw.toFixed(1)+'%"></div>'
+        +'</div>'
+        +delta
+        +'</div>';
+    });
+  });
+  return h;
+}
+
 async function loadMonths(){
   var grid=document.getElementById('monthGrid');
   grid.innerHTML='<div class="empty">Loading...</div>';
@@ -272,6 +330,25 @@ async function loadMonth(mk){
       +'</div>';
   }
 
+  // Budget definitions (shared by the bars chart and the tables below)
+  var BUDGET_VAR={Groceries:15000,Transport:4000,Cleaning:3840,Childcare:2640,Subscriptions:2000};
+  var BUDGET_FIXED_AMT=40261;
+  function varCell(actual,budget){var v=budget-actual;if(Math.abs(v)<50)return'<span style="color:var(--text3)">on budget</span>';return v>0?'<span style="color:var(--green)">+'+fmt(v)+'</span>':'<span style="color:var(--red)">'+fmt(v)+'</span>';}
+  var varRows=Object.keys(BUDGET_VAR).map(function(cat){return{cat:cat,budget:BUDGET_VAR[cat],actual:(byCat[cat]||[]).reduce(function(s,t){return s+t.amount;},0)};});
+  var fixedActual=(byCat['Budgeted fixed costs']||[]).reduce(function(s,t){return s+t.amount;},0);
+
+  // Budget bars chart
+  var budgetedCats={'Budgeted fixed costs':1};Object.keys(BUDGET_VAR).forEach(function(c){budgetedCats[c]=1;});
+  var nbRows=Object.keys(byCat).filter(function(c){return!budgetedCats[c]&&c!=='Misc';}).map(function(c){
+    return{name:c,budget:null,actual:byCat[c].reduce(function(s,t){return s+t.amount;},0)};
+  }).sort(function(a,b){return b.actual-a.actual;});
+  var bbGroups=[
+    {label:'Variable costs — budgeted',rows:varRows.map(function(r){return{name:r.cat,budget:r.budget,actual:r.actual};})},
+    {label:'Fixed costs — budgeted',rows:[{name:'Fixed costs — budgeted',budget:BUDGET_FIXED_AMT,actual:fixedActual}]},
+    {label:'Non-budgeted',rows:nbRows}
+  ];
+  h+='<div class="section"><div class="section-title">Budget bars</div><div class="bb-card">'+budgetBarsHtml(bbGroups)+'</div></div>';
+
   // Spend bar (full month context)
   var spentPct=Math.min(totalExp/totalIncome,1);
   var fillColor=totalExp>totalIncome?'#c0392b':spentPct>0.85?'#8a5c00':'#1a7a4a';
@@ -294,11 +371,6 @@ async function loadMonth(mk){
     +'</table></div></div>';
 
   // Budget vs actual — variable costs
-  var BUDGET_VAR={Groceries:15000,Transport:4000,Cleaning:3840,Childcare:2640,Subscriptions:2000};
-  var BUDGET_FIXED_AMT=40261;
-  function varCell(actual,budget){var v=budget-actual;if(Math.abs(v)<50)return'<span style="color:var(--text3)">on budget</span>';return v>0?'<span style="color:var(--green)">+'+fmt(v)+'</span>':'<span style="color:var(--red)">'+fmt(v)+'</span>';}
-  var varRows=Object.keys(BUDGET_VAR).map(function(cat){return{cat:cat,budget:BUDGET_VAR[cat],actual:(byCat[cat]||[]).reduce(function(s,t){return s+t.amount;},0)};});
-  var fixedActual=(byCat['Budgeted fixed costs']||[]).reduce(function(s,t){return s+t.amount;},0);
   h+='<div class="section"><div class="section-title">Variable costs — budget vs actual</div><div class="table-wrap"><table>'
     +'<tr><th>Category</th><th class="tr">Budget</th><th class="tr">Actual</th><th class="tr">Variance</th></tr>'
     +varRows.map(function(r){
