@@ -514,6 +514,11 @@
       "m": "contains",
       "v": "polarnopyret.no",
       "cat": "Barneutgifter"
+    },
+    {
+      "m": "contains",
+      "v": "zettle_:medicinerforen",
+      "cat": "Jobblunch"
     }
   ],
   "categories": [
