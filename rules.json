@@ -524,6 +524,11 @@
       "m": "contains",
       "v": "kicks 690 palee",
       "cat": "Beauty"
+    },
+    {
+      "m": "contains",
+      "v": "preklinisk kafe",
+      "cat": "Jobblunch"
     }
   ],
   "categories": [
