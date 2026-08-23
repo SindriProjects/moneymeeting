@@ -317,8 +317,14 @@ _supabase.auth.onAuthStateChange(function(event,session){
   if(event==='SIGNED_OUT'||!session)showAuthScreen();
 });
 const GH_OWNER='eriklangaardsolberg-svg',GH_REPO='moneymeeting',GH_FILE='rules.json',GH_BRANCH='main';
-const DEFAULT_CATS=['Groceries','Transport','Budgeted fixed costs','Childcare','Cleaning','Subscriptions','Wolt','Bakeries','Restaurants','Health & wellbeing','Shopping','Travel','Entertainment','Flowers','Gifts','Professional fees','Education','Insurance','Tax','Books','Kiosk','Misc'];
+const DEFAULT_CATS=['Groceries','Transport','Budgeted fixed costs','Childcare','Cleaning','Subscriptions','Wolt','Bakeries','Restaurants','Health & wellbeing','Shopping','Travel','Entertainment','Flowers','Gifts','Professional fees','Education','Tax','Books','Kiosk','Misc'];
 let CATEGORIES=[...DEFAULT_CATS];
+// Applied to every restored category list (GitHub, Supabase, localStorage):
+// renames legacy names and drops retired categories so they stay gone.
+function migrateCategories(cats){
+  return cats.map(function(cat){return cat==='Housing'?'Budgeted fixed costs':cat;})
+    .filter(function(c){return c!=='Insurance';});
+}
 let CUSTOM_RULES=[];
 let ghToken=localStorage.getItem('gh_token')||'';
 let ghConnected=false,ghSha=null;
@@ -407,12 +413,11 @@ const BASE_RULES=[
   {m:'contains',v:'l\u00f8nn',cat:'INCOME_SALARY'},
   {m:'contains',v:'sindri projects',cat:'INCOME_PROJECT'},
   {m:'contains',v:'norsk tipping',cat:'Entertainment'},
-  {m:'contains',v:'gjensidige',cat:'Insurance'},
   {m:'contains',v:'lemonwax',cat:'Shopping'},
   {m:'contains',v:'w22 interi\u00f8r',cat:'Shopping'},
 ];
 
-const BUDGET_VAR={Groceries:15000,Transport:4000,Cleaning:3840,Childcare:2640,Subscriptions:2000};
+const BUDGET_VAR={Groceries:15000,Transport:4000,Cleaning:3840,Childcare:2640,Subscriptions:1000};
 const BUDGET_FIXED={'Fixed costs — budgeted':40261};
 
 function ghHeaders(){return{'Authorization':'Bearer '+ghToken,'Accept':'application/vnd.github+json','Content-Type':'application/json'};}
@@ -426,10 +431,7 @@ async function ghLoad(){
     const data=JSON.parse(atob(j.content.replace(/\n/g,'')));
     CUSTOM_RULES=data.rules||[];
     if(data.categories){
-      CATEGORIES=data.categories.map(function(cat){
-        // Migrate old category name
-        return cat==='Housing'?'Budgeted fixed costs':cat;
-      });
+      CATEGORIES=migrateCategories(data.categories);
     }
     ghConnected=true;
     setGhStatus('ok','Connected \u00b7 '+CUSTOM_RULES.length+' rule'+(CUSTOM_RULES.length!==1?'s':'')+' loaded');
@@ -682,7 +684,7 @@ async function sbMergeAndLoad(d1){
     Object.keys(ts).forEach(function(k){transferState[String(k)]=ts[k];});
   }
   if(session.fixed_paid)window._fixedPaid=session.fixed_paid;
-  if(session.categories&&session.categories.length)CATEGORIES=session.categories;
+  if(session.categories&&session.categories.length)CATEGORIES=migrateCategories(session.categories);
   if(session.manual_expenses&&session.manual_expenses.length)manualExpenses=session.manual_expenses;
   console.log('[SB] Restored txOverrides:', JSON.stringify(txOverrides));
   console.log('[SB] Restored transferState:', JSON.stringify(transferState));
@@ -751,9 +753,7 @@ runBtn.addEventListener('click',function(){
         if(saved.transferState) Object.keys(saved.transferState).forEach(function(k){transferState[k]=saved.transferState[k];});
         if(saved.fixedPaid) window._fixedPaid=saved.fixedPaid;
         if(saved.categories&&saved.categories.length){
-        CATEGORIES=saved.categories.map(function(cat){
-          return cat==='Housing'?'Budgeted fixed costs':cat;
-        });
+        CATEGORIES=migrateCategories(saved.categories);
       }
         if(saved.manualExpenses&&saved.manualExpenses.length) manualExpenses=saved.manualExpenses;
         setSaveStatus('Resumed '+monthLabel);
