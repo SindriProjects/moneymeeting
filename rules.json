@@ -554,6 +554,11 @@
       "m": "contains",
       "v": "tryvannstua",
       "cat": "Bakeries"
+    },
+    {
+      "m": "contains",
+      "v": "vipps:cutters as",
+      "cat": "Health & wellbeing"
     }
   ],
   "categories": [
