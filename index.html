@@ -317,13 +317,21 @@ _supabase.auth.onAuthStateChange(function(event,session){
   if(event==='SIGNED_OUT'||!session)showAuthScreen();
 });
 const GH_OWNER='eriklangaardsolberg-svg',GH_REPO='moneymeeting',GH_FILE='rules.json',GH_BRANCH='main';
-const DEFAULT_CATS=['Groceries','Transport','Budgeted fixed costs','Childcare','Cleaning','Subscriptions','Wolt','Bakeries','Restaurants','Health & wellbeing','Shopping','Travel','Entertainment','Flowers','Gifts','Professional fees','Education','Tax','Books','Kiosk','Misc'];
+const DEFAULT_CATS=['Groceries','Transport','Budgeted fixed costs','Childcare (Henriette)','Cleaning','Subscriptions','Wolt','Bakeries','Restaurants','Health & wellbeing','Shopping','Travel','Entertainment','Flowers','Gifts','Professional fees','Education','Tax','Books','Kiosk','Misc'];
 let CATEGORIES=[...DEFAULT_CATS];
 // Applied to every restored category list (GitHub, Supabase, localStorage):
 // renames legacy names and drops retired categories so they stay gone.
+function migrateCatName(cat){
+  if(cat==='Housing')return 'Budgeted fixed costs';
+  if(cat==='Childcare')return 'Childcare (Henriette)';
+  return cat;
+}
 function migrateCategories(cats){
-  return cats.map(function(cat){return cat==='Housing'?'Budgeted fixed costs':cat;})
-    .filter(function(c){return c!=='Insurance';});
+  var out=[],seen={};
+  cats.map(migrateCatName).filter(function(c){return c!=='Insurance';}).forEach(function(c){
+    if(!seen[c]){seen[c]=true;out.push(c);}
+  });
+  return out;
 }
 let CUSTOM_RULES=[];
 let ghToken=localStorage.getItem('gh_token')||'';
@@ -348,7 +356,7 @@ const BASE_RULES=[
   {m:'contains',v:'homely',cat:'Budgeted fixed costs'},
   {m:'regex',v:'bolij\u00e5n|mortgage|l\u00e5n\\s+510288',cat:'Budgeted fixed costs'},
   {m:'contains',v:'l\u00e5nekassen',cat:'Budgeted fixed costs'},{m:'contains',v:'statens l\u00e5nekasse',cat:'Budgeted fixed costs'},{m:'contains',v:'lanekassen',cat:'Budgeted fixed costs'},
-  {m:'contains',v:'utdanningsetaten',cat:'Childcare'},
+  {m:'contains',v:'utdanningsetaten',cat:'Budgeted fixed costs'},
   {m:'contains',v:'klaudia maria',cat:'Cleaning'},
   {m:'contains',v:'klaudia',cat:'Cleaning'},
   {m:'contains',v:'wolt',cat:'Wolt'},
@@ -417,7 +425,7 @@ const BASE_RULES=[
   {m:'contains',v:'w22 interi\u00f8r',cat:'Shopping'},
 ];
 
-const BUDGET_VAR={Groceries:15000,Transport:4000,Cleaning:3840,Childcare:2640,Subscriptions:1000};
+const BUDGET_VAR={Groceries:15000,Transport:4000,Cleaning:3840,'Childcare (Henriette)':4000,Subscriptions:1000};
 const BUDGET_FIXED={'Fixed costs — budgeted':40261};
 
 function ghHeaders(){return{'Authorization':'Bearer '+ghToken,'Accept':'application/vnd.github+json','Content-Type':'application/json'};}
@@ -855,7 +863,7 @@ function buildReport(allInternals,baseTransactions){
       income.push(overridden);
     } else {
       if(ov&&ov.omit)return;
-      expenses.push(Object.assign({},t,{cat:ov?ov.cat:t.cat}));
+      expenses.push(Object.assign({},t,{cat:migrateCatName(ov?ov.cat:t.cat)}));
     }
   });
   // Add manual expenses
@@ -872,7 +880,7 @@ function buildReport(allInternals,baseTransactions){
   var daysElapsed=Math.round((paceDate-d1)/86400000)+1;
   var varRows=Object.keys(BUDGET_VAR).map(function(cat){return{cat:cat,budget:BUDGET_VAR[cat],actual:(byCategory[cat]||[]).reduce(function(s,t){return s+t.amount;},0)};});
   var fixedRows=Object.keys(BUDGET_FIXED).map(function(cat){return{cat:cat,budget:BUDGET_FIXED[cat],actual:(byCategory['Budgeted fixed costs']||[]).reduce(function(s,t){return s+t.amount;},0)};});
-  var budgetedCats={'Groceries':1,'Transport':1,'Cleaning':1,'Childcare':1,'Subscriptions':1,'Budgeted fixed costs':1};
+  var budgetedCats={'Groceries':1,'Transport':1,'Cleaning':1,'Childcare (Henriette)':1,'Subscriptions':1,'Budgeted fixed costs':1};
   var nonBudgeted=Object.keys(byCategory).filter(function(c){return!budgetedCats[c]&&c.indexOf('INCOME')!==0&&c!=='Refund';}).map(function(c){return[c,byCategory[c]];}).sort(function(a,b){return b[1].reduce(function(s,t){return s+t.amount;},0)-a[1].reduce(function(s,t){return s+t.amount;},0);});
   var totalIncome=income.reduce(function(s,t){return s+t.amount;},0);
   var totalExp=expenses.reduce(function(s,t){return s+t.amount;},0);
@@ -1243,7 +1251,7 @@ function render(d){
       {key:'unicef',   label:'Unicef',amount:500,          patterns:[/unicef/i]},
       {key:'tjome',    label:'Tj\u00f8me',amount:1000,    patterns:[/tj.?me/i,/tj\u00f8me/i]},
       {key:'proptax',  label:'Property tax',amount:500,    patterns:[/skatteetaten/i,/eiendomsskatt/i]},
-      {key:'childcare',label:'Childcare (nursery)',amount:2640,patterns:[/utdanningsetaten/i,/barnehage/i]},
+      {key:'childcare',label:'Barnehage',amount:2640,patterns:[/utdanningsetaten/i,/barnehage/i]},
     ].map(function(item){
       var autoSeen=allExpenseTxs.some(function(t){return item.patterns.some(function(p){return p.test(t.desc);});});
       var manualState=window._fixedPaid&&window._fixedPaid[item.key];

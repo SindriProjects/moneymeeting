@@ -331,7 +331,12 @@ async function loadMonth(mk){
   }
 
   // Budget definitions (shared by the bars chart and the tables below)
-  var BUDGET_VAR={Groceries:15000,Transport:4000,Cleaning:3840,Childcare:2640,Subscriptions:1000};
+  var BUDGET_VAR={Groceries:15000,Transport:4000,Cleaning:3840,'Childcare (Henriette)':4000,Subscriptions:1000};
+  // Months saved before the rename stored the category as 'Childcare'
+  if(byCat['Childcare']){
+    byCat['Childcare (Henriette)']=(byCat['Childcare (Henriette)']||[]).concat(byCat['Childcare']);
+    delete byCat['Childcare'];
+  }
   var BUDGET_FIXED_AMT=40261;
   function varCell(actual,budget){var v=budget-actual;if(Math.abs(v)<50)return'<span style="color:var(--text3)">on budget</span>';return v>0?'<span style="color:var(--green)">+'+fmt(v)+'</span>':'<span style="color:var(--red)">'+fmt(v)+'</span>';}
   var varRows=Object.keys(BUDGET_VAR).map(function(cat){return{cat:cat,budget:BUDGET_VAR[cat],actual:(byCat[cat]||[]).reduce(function(s,t){return s+t.amount;},0)};});

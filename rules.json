@@ -103,7 +103,7 @@
     {
       "m": "contains",
       "v": "henriette drillestad",
-      "cat": "Childcare"
+      "cat": "Childcare (Henriette)"
     },
     {
       "m": "contains",
@@ -490,7 +490,7 @@
     "Groceries",
     "Transport",
     "Budgeted fixed costs",
-    "Childcare",
+    "Childcare (Henriette)",
     "Cleaning",
     "Subscriptions",
     "Wolt",
