@@ -484,6 +484,11 @@
       "m": "contains",
       "v": "vipps:cutters as",
       "cat": "Health & wellbeing"
+    },
+    {
+      "m": "contains",
+      "v": "domus medica ka",
+      "cat": "Jobblunch"
     }
   ],
   "categories": [
