@@ -499,6 +499,11 @@
       "m": "contains",
       "v": "riverty norway as",
       "cat": "Transport"
+    },
+    {
+      "m": "contains",
+      "v": "norgesbuss eksp",
+      "cat": "Travel"
     }
   ],
   "categories": [
