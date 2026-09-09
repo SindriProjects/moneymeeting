@@ -504,6 +504,11 @@
       "m": "contains",
       "v": "norgesbuss eksp",
       "cat": "Travel"
+    },
+    {
+      "m": "contains",
+      "v": "klarna:mango",
+      "cat": "Barneutgifter"
     }
   ],
   "categories": [
