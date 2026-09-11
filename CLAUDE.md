@@ -47,6 +47,13 @@ Two people share the data. Cloud (Supabase) is the source of truth:
   delete-month removes rows.
 - The GitHub rules token is shared through the `app_config` table.
 
+`planner.html` is the shared weekly kindergarten planner: one
+`planner_weeks` row per ISO week (`days` jsonb, slot-level dirty-merge on
+save so partners never clobber each other), hour weights/windows in
+`app_config` key `planner_settings`. Hours accrue only to Helene/Erik; a
+pick-up "partner home from HH:MM" splits the remaining window 50/50,
+scaled to the configured hours.
+
 ## Gotchas
 
 - `monthly_sessions` rejects unknown payload columns (PostgREST 400 PGRST204);

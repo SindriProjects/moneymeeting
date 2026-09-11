@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weekly Planner</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231a7a4a'/%3E%3Ctext x='32' y='44' font-family='DM Sans,sans-serif' font-size='40' font-weight='500' text-anchor='middle' fill='%23ffffff'%3E%24%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#f5f4f0;--surface:#fff;--surface2:#f0efe9;--border:#e2e0d8;--border2:#ccc9be;--text:#1a1916;--text2:#6b6860;--text3:#9e9b94;--green:#1a7a4a;--green-bg:#eaf4ee;--green-bd:#b6dfc6;--red:#c0392b;--red-bg:#fdf0ee;--amber:#8a5c00;--amber-bg:#fdf6e3;--amber-bd:#f0d898;--blue:#185fa5;--blue-bg:#eef4fc;--blue-bd:#b8d4f0;--r:8px;--rl:12px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;font-size:14px;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;}
+.shell{max-width:920px;margin:0 auto;padding:48px 24px 80px;}
+.header{margin-bottom:28px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.logo{font-size:22px;font-weight:500;letter-spacing:-.5px;}
+.logo span{color:var(--text3);font-weight:300;}
+.header-sub{font-size:13px;color:var(--text3);margin-top:3px;}
+.btn{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;padding:7px 14px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);color:var(--text2);cursor:pointer;transition:all .12s;white-space:nowrap;text-decoration:none;display:inline-block;}
+.btn:hover{background:var(--surface2);color:var(--text);}
+.section-title{font-size:11px;text-transform:uppercase;letter-spacing:.8px;font-weight:500;color:var(--text3);margin:26px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.section-title .hint{font-size:11px;text-transform:none;letter-spacing:0;font-weight:400;}
+.section-title.collapsible{cursor:pointer;user-select:none;}
+
+/* Auth (same account as the analyzer) */
+.auth-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px;}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:2rem 2.5rem;text-align:center;width:100%;max-width:360px;}
+.auth-title{font-size:16px;font-weight:500;margin-bottom:4px;}
+.auth-sub{font-size:13px;color:var(--text3);margin-bottom:20px;}
+.auth-input{width:100%;font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 12px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface2);color:var(--text);margin-bottom:10px;}
+.auth-input:focus{outline:none;border-color:var(--text3);}
+.auth-btn{width:100%;padding:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;border-radius:var(--r);border:none;background:var(--text);color:#fff;cursor:pointer;}
+.auth-btn:hover{opacity:.85;}
+.auth-err{font-size:12px;color:var(--red);min-height:18px;margin-top:4px;}
+
+/* Week nav */
+.week-nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px;}
+.week-label{font-size:15px;font-weight:500;}
+.week-label small{display:block;font-size:12px;font-weight:400;color:var(--text3);}
+.week-nav .spacer{flex:1;}
+#syncNote{font-size:12px;color:var(--text3);transition:opacity .5s;}
+
+/* Day grid */
+.day-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:10px;display:grid;grid-template-columns:110px 1fr 1fr;gap:14px;align-items:start;}
+.day-name{font-size:13px;font-weight:500;}
+.day-name small{display:block;font-size:11px;font-weight:400;color:var(--text3);font-family:'DM Mono',monospace;}
+.day-name.today{color:var(--green);}
+.slot-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);font-weight:500;margin-bottom:5px;}
+.slot select{width:100%;font-family:'DM Sans',sans-serif;font-size:13px;padding:7px 8px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface2);color:var(--text);}
+.slot select.assigned-Helene{background:var(--green-bg);border-color:var(--green-bd);color:var(--green);font-weight:500;}
+.slot select.assigned-Erik{background:var(--blue-bg);border-color:var(--blue-bd);color:var(--blue);font-weight:500;}
+.slot select.assigned-other{background:var(--amber-bg);border-color:var(--amber-bd);color:var(--amber);font-weight:500;}
+.handover{margin-top:7px;display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text2);flex-wrap:wrap;}
+.handover input[type=time]{font-family:'DM Mono',monospace;font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid var(--border2);background:var(--surface);color:var(--text);}
+.handover .clear-ho{cursor:pointer;color:var(--text3);font-size:14px;border:none;background:none;padding:0 3px;}
+.handover .clear-ho:hover{color:var(--red);}
+.slot-hours{margin-top:6px;font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums;}
+.slot-hours .h-he{color:var(--green);font-weight:500;}
+.slot-hours .h-er{color:var(--blue);font-weight:500;}
+
+/* Summary */
+.sum-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:18px;}
+.sum-bar{position:relative;height:26px;border-radius:6px;overflow:hidden;display:flex;margin:12px 0 8px;background:var(--surface2);}
+.sum-bar .seg-he{background:var(--green);height:100%;}
+.sum-bar .seg-er{background:var(--blue);height:100%;}
+.sum-legend{display:flex;gap:20px;flex-wrap:wrap;font-size:13px;}
+.sum-legend b{font-variant-numeric:tabular-nums;}
+.sum-legend .dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;}
+.sum-detail{font-size:12px;color:var(--text3);margin-top:8px;}
+
+/* Settings */
+#settingsBody{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px;}
+.set-row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:13px;}
+.set-row:last-child{margin-bottom:0;}
+.set-row label{min-width:70px;color:var(--text2);}
+.set-row input[type=number]{width:70px;font-family:'DM Sans',sans-serif;font-size:13px;padding:5px 8px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface2);}
+.set-row input[type=time]{font-family:'DM Mono',monospace;font-size:12px;padding:5px 7px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface2);}
+.set-note{font-size:11.5px;color:var(--text3);margin-top:8px;}
+
+@media (max-width:640px){
+  .shell{padding:20px 14px 60px;}
+  .header{margin-bottom:16px;}
+  .logo{font-size:19px;}
+  .btn{padding:6px 10px;font-size:12px;}
+  .day-card{grid-template-columns:1fr;gap:10px;padding:12px 14px;}
+  .day-name{display:flex;align-items:baseline;gap:8px;}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div id="authScreen" class="auth-screen" style="display:none;">
+    <div class="auth-card">
+      <div class="auth-title">Weekly Planner</div>
+      <div class="auth-sub">Sign in with your shared account</div>
+      <input class="auth-input" id="authEmail" type="email" placeholder="Email" autocomplete="username">
+      <input class="auth-input" id="authPassword" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth()">
+      <button class="auth-btn" id="authSubmit" onclick="doAuth()">Sign in</button>
+      <div class="auth-err" id="authErr"></div>
+    </div>
+  </div>
+
+  <div id="appArea" style="display:none;">
+    <div class="header">
+      <div>
+        <div class="logo">Finance <span>/ Planner</span></div>
+        <div class="header-sub">Who delivers, who picks up — and how the hours land</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <a href="index.html" class="btn">Analyzer</a>
+        <a href="history.html" class="btn">History</a>
+      </div>
+    </div>
+
+    <div class="week-nav">
+      <button class="btn" onclick="stepWeek(-1)">&#8249; Prev</button>
+      <button class="btn" onclick="goThisWeek()">This week</button>
+      <button class="btn" onclick="stepWeek(1)">Next &#8250;</button>
+      <div class="week-label" id="weekLabel"></div>
+      <div class="spacer"></div>
+      <span id="syncNote" style="opacity:0;"></span>
+    </div>
+
+    <div id="dayGrid"></div>
+
+    <div class="section-title">Hours this week <span class="hint">· Helene vs Erik · third-party runs count for neither</span></div>
+    <div class="sum-card" id="summary"></div>
+
+    <div class="section-title collapsible" onclick="toggleSettings()">Settings <span class="hint">· hour weights and time windows · shared</span></div>
+    <div id="settingsBody" style="display:none;"></div>
+  </div>
+</div>
+
+<script>
+const SB_URL='https://spuwzdnuxmqnblpbdtoq.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwdXd6ZG51eG1xbmJscGJkdG9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MDEzMDcsImV4cCI6MjA5MjA3NzMwN30.xtnLIvBm5DVrQAVn9W2g3wowVyqRz5DBxCtyWJj-XjA';
+const _supabase=supabase.createClient(SB_URL,SB_KEY);
+async function sbHeaders(){
+  var s=await _supabase.auth.getSession();
+  var token=s.data.session?s.data.session.access_token:SB_KEY;
+  return{'apikey':SB_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'};
+}
+
+const PEOPLE=['Helene','Erik','Line/Birger','Elisabeth/Magnar','Henriette'];
+const PAIR=['Helene','Erik'];
+const DAYS=[['mon','Monday'],['tue','Tuesday'],['wed','Wednesday'],['thu','Thursday'],['fri','Friday']];
+const DEFAULT_SETTINGS={deliveryHours:2,deliveryStart:'06:30',deliveryEnd:'08:30',pickupHours:4,pickupStart:'15:00',pickupEnd:'19:00'};
+
+let settings=Object.assign({},DEFAULT_SETTINGS);
+let weekOffset=0;          // weeks relative to today
+let weekData={};           // {mon:{delivery:{who},pickup:{who,handover}},...}
+let dirtySlots={};         // 'mon.pickup' -> true, changed since last successful save
+let _saveTimer=null,_saveInFlight=false,_saveQueued=false;
+
+// ── Week math (ISO weeks, Monday-based) ────────────────────────────────
+function mondayOf(d){var x=new Date(d);var day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);x.setHours(0,0,0,0);return x;}
+function currentMonday(){var m=mondayOf(new Date());m.setDate(m.getDate()+weekOffset*7);return m;}
+function isoWeekKey(monday){
+  var th=new Date(monday);th.setDate(th.getDate()+3); // ISO week = week of its Thursday
+  var y=th.getFullYear();
+  var jan4=new Date(y,0,4);
+  var week=1+Math.round((mondayOf(th)-mondayOf(jan4))/(7*86400000));
+  return y+'-W'+String(week).padStart(2,'0');
+}
+function fmtDate(d){return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
+
+function toMin(t){if(!t||!/^\d{2}:\d{2}$/.test(t))return null;var p=t.split(':');return(+p[0])*60+(+p[1]);}
+
+// ── Hour accrual ───────────────────────────────────────────────────────
+// A slot assigned to Helene or Erik accrues its configured hours to them.
+// Pick-up handover: from the moment the partner is home, the remaining
+// window accrues 50/50, scaled to the configured hours.
+function slotHours(slot,kind){
+  var res={Helene:0,Erik:0,shared:false};
+  if(!slot||!slot.who||PAIR.indexOf(slot.who)<0)return res;
+  var H=kind==='delivery'?(+settings.deliveryHours||0):(+settings.pickupHours||0);
+  var who=slot.who,other=who==='Helene'?'Erik':'Helene';
+  var t=kind==='pickup'?toMin(slot.handover):null;
+  var S=toMin(settings.pickupStart),E=toMin(settings.pickupEnd);
+  if(kind==='pickup'&&t!=null&&S!=null&&E!=null&&E>S){
+    t=Math.min(Math.max(t,S),E);
+    var solo=(t-S)/(E-S),shared=(E-t)/(E-S);
+    res[who]=(solo+shared/2)*H;
+    res[other]=(shared/2)*H;
+    res.shared=shared>0;
+  }else{
+    res[who]=H;
+  }
+  return res;
+}
+function weekTotals(){
+  var tot={Helene:0,Erik:0},counts={Helene:{d:0,p:0},Erik:{d:0,p:0}},sharedCount=0;
+  DAYS.forEach(function(dd){
+    var day=weekData[dd[0]]||{};
+    ['delivery','pickup'].forEach(function(kind){
+      var h=slotHours(day[kind],kind);
+      tot.Helene+=h.Helene;tot.Erik+=h.Erik;
+      if(day[kind]&&PAIR.indexOf(day[kind].who)>=0)counts[day[kind].who][kind==='delivery'?'d':'p']++;
+      if(h.shared)sharedCount++;
+    });
+  });
+  return{tot:tot,counts:counts,sharedCount:sharedCount};
+}
+function fmtH(n){return(Math.round(n*10)/10).toLocaleString('nb-NO')+' h';}
+
+// ── Supabase I/O ───────────────────────────────────────────────────────
+async function loadWeek(){
+  var wk=isoWeekKey(currentMonday());
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/planner_weeks?week_key=eq.'+wk+'&select=*',{headers:await sbHeaders()});
+    var rows=r.ok?await r.json():[];
+    var cloud=rows.length?rows[0].days||{}:{};
+    // cloud wins except slots edited here since the last successful save
+    var merged=JSON.parse(JSON.stringify(cloud));
+    Object.keys(dirtySlots).forEach(function(path){
+      var p=path.split('.');
+      if(weekData[p[0]]&&weekData[p[0]][p[1]]!==undefined){
+        merged[p[0]]=merged[p[0]]||{};
+        merged[p[0]][p[1]]=weekData[p[0]][p[1]];
+      }
+    });
+    weekData=merged;
+  }catch(e){console.warn('[PL] Load failed',e);}
+  renderAll();
+}
+function scheduleSave(){
+  if(_saveTimer)clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(saveWeek,1500);
+}
+async function saveWeek(){
+  if(_saveInFlight){_saveQueued=true;return;}
+  _saveInFlight=true;
+  var wk=isoWeekKey(currentMonday());
+  var mySlots=Object.assign({},dirtySlots);
+  try{
+    var hdrs=await sbHeaders();
+    // merge: cloud base, overlay our dirty slots — the partner's edits survive
+    var r=await fetch(SB_URL+'/rest/v1/planner_weeks?week_key=eq.'+wk+'&select=days',{headers:hdrs});
+    var rows=r.ok?await r.json():[];
+    var days=rows.length?rows[0].days||{}:{};
+    Object.keys(mySlots).forEach(function(path){
+      var p=path.split('.');
+      days[p[0]]=days[p[0]]||{};
+      days[p[0]][p[1]]=(weekData[p[0]]||{})[p[1]]||null;
+    });
+    var body={week_key:wk,days:days,updated_at:new Date().toISOString()};
+    var w=await fetch(SB_URL+'/rest/v1/planner_weeks',{method:'POST',headers:hdrs,body:JSON.stringify(body)});
+    if(!w.ok){var err=await w.text();throw new Error(w.status+': '+err);}
+    Object.keys(mySlots).forEach(function(k){delete dirtySlots[k];});
+    weekData=days;
+    renderAll();
+    setSyncNote('Synced');
+  }catch(e){
+    setSyncNote('Sync failed — '+(e&&e.message?e.message:e),true);
+  }
+  _saveInFlight=false;
+  if(_saveQueued){_saveQueued=false;scheduleSave();}
+}
+function setSyncNote(msg,isErr){
+  var el=document.getElementById('syncNote');
+  el.textContent=msg;el.style.color=isErr?'var(--red)':'var(--text3)';el.style.opacity='1';
+  clearTimeout(el._t);el._t=setTimeout(function(){el.style.opacity='0';},isErr?12000:2500);
+}
+
+async function loadSettings(){
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/app_config?key=eq.planner_settings&select=value',{headers:await sbHeaders()});
+    var rows=r.ok?await r.json():[];
+    if(rows.length&&rows[0].value)settings=Object.assign({},DEFAULT_SETTINGS,JSON.parse(rows[0].value));
+  }catch(e){console.warn('[PL] Settings load failed',e);}
+}
+var _setTimer=null;
+function scheduleSettingsSave(){
+  if(_setTimer)clearTimeout(_setTimer);
+  _setTimer=setTimeout(async function(){
+    try{
+      await fetch(SB_URL+'/rest/v1/app_config',{method:'POST',headers:await sbHeaders(),body:JSON.stringify({key:'planner_settings',value:JSON.stringify(settings)})});
+      setSyncNote('Settings synced');
+    }catch(e){setSyncNote('Settings sync failed',true);}
+  },1200);
+}
+
+// ── Rendering ──────────────────────────────────────────────────────────
+function renderAll(){renderWeekLabel();renderGrid();renderSummary();renderSettings();}
+
+function renderWeekLabel(){
+  var mon=currentMonday(),fri=new Date(mon);fri.setDate(fri.getDate()+4);
+  document.getElementById('weekLabel').innerHTML=
+    isoWeekKey(mon).replace('-W',' · week ')+'<small>'+fmtDate(mon)+' — '+fmtDate(fri)+'</small>';
+}
+
+function personSelect(dayKey,kind,slot){
+  var who=slot&&slot.who||'';
+  var cls=who==='Helene'?'assigned-Helene':who==='Erik'?'assigned-Erik':who?'assigned-other':'';
+  var opts='<option value="">—</option>'+PEOPLE.map(function(p){
+    return'<option value="'+p+'"'+(p===who?' selected':'')+'>'+p+'</option>';
+  }).join('');
+  return'<select class="'+cls+'" data-day="'+dayKey+'" data-kind="'+kind+'">'+opts+'</select>';
+}
+
+function renderGrid(){
+  var mon=currentMonday(),today=new Date();today.setHours(0,0,0,0);
+  var h='';
+  DAYS.forEach(function(dd,i){
+    var dayKey=dd[0],date=new Date(mon);date.setDate(date.getDate()+i);
+    var day=weekData[dayKey]||{};
+    var isToday=date.getTime()===today.getTime();
+    var pickupWho=day.pickup&&day.pickup.who;
+    var handoverBlock='';
+    if(pickupWho&&PAIR.indexOf(pickupWho)>=0){
+      var partner=pickupWho==='Helene'?'Erik':'Helene';
+      var ho=day.pickup.handover||'';
+      handoverBlock='<div class="handover">'+partner+' home from '
+        +'<input type="time" value="'+ho+'" data-day="'+dayKey+'" data-ho="1">'
+        +(ho?'<button class="clear-ho" data-day="'+dayKey+'" data-clearho="1" title="Remove handover">×</button>':'')
+        +'</div>';
+      var hrs=slotHours(day.pickup,'pickup');
+      if(ho)handoverBlock+='<div class="slot-hours"><span class="h-he">Helene '+fmtH(hrs.Helene)+'</span> · <span class="h-er">Erik '+fmtH(hrs.Erik)+'</span></div>';
+    }
+    h+='<div class="day-card">'
+      +'<div class="day-name'+(isToday?' today':'')+'">'+dd[1]+'<small>'+fmtDate(date)+'</small></div>'
+      +'<div class="slot"><div class="slot-label">Delivery · '+settings.deliveryStart+'–'+settings.deliveryEnd+'</div>'+personSelect(dayKey,'delivery',day.delivery)+'</div>'
+      +'<div class="slot"><div class="slot-label">Pick-up · '+settings.pickupStart+'–'+settings.pickupEnd+'</div>'+personSelect(dayKey,'pickup',day.pickup)+handoverBlock+'</div>'
+      +'</div>';
+  });
+  var grid=document.getElementById('dayGrid');
+  grid.innerHTML=h;
+  grid.querySelectorAll('select[data-kind]').forEach(function(sel){
+    sel.addEventListener('change',function(){
+      var dayKey=sel.getAttribute('data-day'),kind=sel.getAttribute('data-kind');
+      weekData[dayKey]=weekData[dayKey]||{};
+      var prev=weekData[dayKey][kind]||{};
+      weekData[dayKey][kind]=sel.value?{who:sel.value,handover:(kind==='pickup'&&PAIR.indexOf(sel.value)>=0)?(prev.handover||''):''}:null;
+      dirtySlots[dayKey+'.'+kind]=true;
+      renderAll();scheduleSave();
+    });
+  });
+  grid.querySelectorAll('input[data-ho]').forEach(function(inp){
+    inp.addEventListener('change',function(){
+      var dayKey=inp.getAttribute('data-day');
+      if(weekData[dayKey]&&weekData[dayKey].pickup){
+        weekData[dayKey].pickup.handover=inp.value||'';
+        dirtySlots[dayKey+'.pickup']=true;
+        renderAll();scheduleSave();
+      }
+    });
+  });
+  grid.querySelectorAll('[data-clearho]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var dayKey=btn.getAttribute('data-day');
+      if(weekData[dayKey]&&weekData[dayKey].pickup){
+        weekData[dayKey].pickup.handover='';
+        dirtySlots[dayKey+'.pickup']=true;
+        renderAll();scheduleSave();
+      }
+    });
+  });
+}
+
+function renderSummary(){
+  var s=weekTotals();
+  var total=s.tot.Helene+s.tot.Erik;
+  var heP=total>0?s.tot.Helene/total*100:50,erP=total>0?s.tot.Erik/total*100:50;
+  var h='';
+  if(total===0){
+    h='<div style="font-size:13px;color:var(--text3)">Nothing assigned to Helene or Erik yet this week.</div>';
+  }else{
+    h='<div class="sum-bar"><div class="seg-he" style="width:'+heP.toFixed(1)+'%"></div><div class="seg-er" style="width:'+erP.toFixed(1)+'%"></div></div>'
+      +'<div class="sum-legend">'
+      +'<span><span class="dot" style="background:var(--green)"></span>Helene <b>'+fmtH(s.tot.Helene)+'</b> ('+heP.toFixed(0)+'%)</span>'
+      +'<span><span class="dot" style="background:var(--blue)"></span>Erik <b>'+fmtH(s.tot.Erik)+'</b> ('+erP.toFixed(0)+'%)</span>'
+      +'</div>'
+      +'<div class="sum-detail">Helene: '+s.counts.Helene.d+' deliveries · '+s.counts.Helene.p+' pick-ups &nbsp;—&nbsp; Erik: '+s.counts.Erik.d+' deliveries · '+s.counts.Erik.p+' pick-ups'
+      +(s.sharedCount?' &nbsp;—&nbsp; '+s.sharedCount+' shared afternoon'+(s.sharedCount>1?'s':'')+' (50/50 after handover)':'')
+      +'</div>';
+  }
+  document.getElementById('summary').innerHTML=h;
+}
+
+function renderSettings(){
+  var el=document.getElementById('settingsBody');
+  el.innerHTML=
+    '<div class="set-row"><label>Delivery</label>'
+      +'<input type="number" step="0.5" min="0" id="setDh" value="'+settings.deliveryHours+'"> hours'
+      +'<input type="time" id="setDs" value="'+settings.deliveryStart+'"> to <input type="time" id="setDe" value="'+settings.deliveryEnd+'">'
+    +'</div>'
+    +'<div class="set-row"><label>Pick-up</label>'
+      +'<input type="number" step="0.5" min="0" id="setPh" value="'+settings.pickupHours+'"> hours'
+      +'<input type="time" id="setPs" value="'+settings.pickupStart+'"> to <input type="time" id="setPe" value="'+settings.pickupEnd+'">'
+    +'</div>'
+    +'<div class="set-note">The pick-up window is what the handover split is measured against: hours before "partner home" go to the assignee, the rest is 50/50 — scaled to the configured hour weight.</div>';
+  [['setDh','deliveryHours',true],['setDs','deliveryStart'],['setDe','deliveryEnd'],['setPh','pickupHours',true],['setPs','pickupStart'],['setPe','pickupEnd']].forEach(function(cfg){
+    document.getElementById(cfg[0]).addEventListener('change',function(e){
+      settings[cfg[1]]=cfg[2]?(parseFloat(e.target.value)||0):e.target.value;
+      renderAll();scheduleSettingsSave();
+    });
+  });
+}
+
+function toggleSettings(){
+  var el=document.getElementById('settingsBody');
+  el.style.display=el.style.display==='none'?'':'none';
+}
+
+// ── Navigation & auth ──────────────────────────────────────────────────
+function stepWeek(n){weekOffset+=n;dirtySlots={};weekData={};renderAll();loadWeek();}
+function goThisWeek(){weekOffset=0;dirtySlots={};weekData={};renderAll();loadWeek();}
+
+async function doAuth(){
+  var email=document.getElementById('authEmail').value.trim();
+  var password=document.getElementById('authPassword').value;
+  var errEl=document.getElementById('authErr');
+  errEl.textContent='';
+  if(!email||!password){errEl.textContent='Email and password required.';return;}
+  var result=await _supabase.auth.signInWithPassword({email:email,password:password});
+  if(result.error){errEl.textContent=result.error.message;return;}
+  if(result.data&&result.data.session)start();
+}
+function start(){
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('appArea').style.display='block';
+  (async function(){await loadSettings();renderAll();loadWeek();})();
+}
+window.addEventListener('load',async function(){
+  var s=await _supabase.auth.getSession();
+  if(s.data.session){start();}
+  else{document.getElementById('authScreen').style.display='flex';}
+});
+// Pull the partner's latest whenever the tab regains focus
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden&&document.getElementById('appArea').style.display!=='none')loadWeek();
+});
+</script>
+</body>
+</html>
