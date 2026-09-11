@@ -144,12 +144,14 @@ tr:last-child td{border-bottom:none;}
   .drill-row{display:none!important;}
   .report-print-header{display:block!important;}
   #miscPrintTable{display:block!important;}
+  #manualPrintTable{display:block!important;}
   #manualPrintSection{display:block!important;}
 }
 .report-print-header{display:none;font-size:18px;font-weight:500;margin-bottom:4px;letter-spacing:-.3px;}
 .report-print-sub{display:none;font-size:12px;color:var(--text2);margin-bottom:24px;}
 @media print{.report-print-sub{display:block;}}
 #miscPrintTable{display:none;}
+#manualPrintTable{display:none;}
 .auth-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px;}
 .auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:2rem 2.5rem;text-align:center;width:100%;max-width:360px;}
 .auth-title{font-size:16px;font-weight:500;margin-bottom:4px;}
@@ -1424,17 +1426,17 @@ function render(d){
     +'<div id="miscPrintTable"><div class="table-wrap"><table><tr><th>Date</th><th>Description</th><th class="tr">Amount</th></tr>'+miscTxs.map(function(t){return'<tr><td style="font-family:monospace;font-size:11px;color:var(--text3)">'+t.date+'</td><td>'+t.desc+'</td><td class="tr">'+fmt(t.amount)+'</td></tr>';}).join('')+'<tr><td colspan="2" class="bold">Total</td><td class="tr bold">'+fmt(miscTotal)+'</td></tr></table></div></div>';
   h+=sectionWrap('sec_misc','Unclassified (Misc) <span class="hint">\u00b7 '+miscTxs.length+' remaining'+(miscTxs.length>0?' \u00b7 '+fmt(miscTotal):'')+'</span>',_miscBody);
 
-  // Manual expenses — shown in print too
+  // Manual expenses print listing — hidden on screen (the editable table next
+  // to the entry form is the on-screen list); the form section is no-print.
   if(manualExpenses.length>0){
-    var _manBody='<div class="table-wrap"><table><tr><th>Date</th><th>Description</th><th>Category</th><th class="tr">Amount</th></tr>';
+    h+='<div id="manualPrintTable"><div class="section"><div class="section-title">Manually added expenses</div><div class="table-wrap"><table><tr><th>Date</th><th>Description</th><th>Category</th><th class="tr">Amount</th></tr>';
     manualExpenses.forEach(function(e){
       var _mov=txOverrides[uid(e)];
-      var _mhid=_mov&&_mov.omit;
-      _manBody+='<tr'+(_mhid?' style="opacity:.55"':'')+'><td style="font-family:monospace;font-size:11px;color:var(--text3)">'+e.date+'</td><td>'+e.desc+(_mhid?' <span class="pill pill-amb">hidden</span>':'')+'</td><td class="muted">'+migrateCatName(_mov&&_mov.cat?_mov.cat:e.cat)+'</td><td class="tr">'+fmt(e.amount)+'</td></tr>';
+      if(_mov&&_mov.omit)return;
+      h+='<tr><td style="font-family:monospace;font-size:11px;color:var(--text3)">'+e.date+'</td><td>'+e.desc+'</td><td class="muted">'+migrateCatName(_mov&&_mov.cat?_mov.cat:e.cat)+'</td><td class="tr">'+fmt(e.amount)+'</td></tr>';
     });
-    _manBody+='<tr><td colspan="3" class="bold">Total</td><td class="tr bold">'+fmt(manualExpenses.reduce(function(s,e){return s+e.amount;},0))+'</td></tr>';
-    _manBody+='</table></div>';
-    h+=sectionWrap('sec_manual','Manually added expenses',_manBody);
+    h+='<tr><td colspan="3" class="bold">Total</td><td class="tr bold">'+fmt(manualExpenses.reduce(function(s,e){var ov=txOverrides[uid(e)];return ov&&ov.omit?s:s+e.amount;},0))+'</td></tr>';
+    h+='</table></div></div></div>';
   }
 
   // Removed transactions section
