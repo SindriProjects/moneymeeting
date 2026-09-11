@@ -529,6 +529,11 @@
       "m": "contains",
       "v": "spar tjøme",
       "cat": "Groceries"
+    },
+    {
+      "m": "contains",
+      "v": "extra tjøme",
+      "cat": "Groceries"
     }
   ],
   "categories": [
