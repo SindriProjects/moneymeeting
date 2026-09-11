@@ -673,7 +673,7 @@ async function sbSaveSession(d1,report,baseTransactions){
   async function _doSessionWrite(body){
     var pr=await fetch(SB_URL+'/rest/v1/monthly_sessions?month_key=eq.'+monthKey,{method:'PATCH',headers:Object.assign({},simpleHdrs,{'Prefer':'return=representation'}),body:JSON.stringify(body)});
     var pd=pr.ok?await pr.json():null;
-    if(pd&&Array.isArray(pd)&&pd.length>0)return{ok:true,resp:pr};
+    if(pd&&Array.isArray(pd)&&pd.length>0)return{ok:true,resp:pr,row:pd[0]};
     if(!pr.ok)return{ok:false,resp:pr};
     var por=await fetch(SB_URL+'/rest/v1/monthly_sessions',{method:'POST',headers:simpleHdrs,body:JSON.stringify(Object.assign({},body,{status:'in_progress'}))});
     return{ok:por.ok,resp:por,created:por.ok};
@@ -694,7 +694,11 @@ async function sbSaveSession(d1,report,baseTransactions){
   }
   if(!sessResult.ok)throw new Error('Session save failed ('+sessResult.resp.status+'): '+sessErrText);
   if(sessResult.created)window._sessionStatus='in_progress';
-  window._cloudUpdatedAt=session.updated_at;
+  // Remember the server's own representation of what we wrote: its timestamp
+  // format differs from JS ISO strings, and the sync baseline feeds the
+  // three-way merge in runCloudSave.
+  window._cloudUpdatedAt=(sessResult.row&&sessResult.row.updated_at)||session.updated_at;
+  window._lastSynced=snapshotSyncState();
   if(txError){
     setSaveStatus('Session saved, but transactions failed — '+txError,true);
   }else if(droppedCols.length){
@@ -750,6 +754,33 @@ function applySavedState(cloud,local){
 function loadLocalState(monthKey){
   try{return JSON.parse(localStorage.getItem('mm_session_'+monthKey));}catch(e){return null;}
 }
+// Baseline of the last state we synced with the cloud - the third leg of the
+// three-way merge: a cloud value only overwrites a local key that is
+// unchanged since this snapshot (i.e. the user has not touched it here).
+function snapshotSyncState(){
+  return JSON.stringify({ov:txOverrides,ts:transferState,fp:window._fixedPaid||{}});
+}
+function tsNewer(a,b){
+  var pa=Date.parse(a||''),pb=Date.parse(b||'');
+  if(isNaN(pa)||isNaN(pb))return String(a)!==String(b);
+  return pa>pb+500; // half-second slack absorbs format/rounding differences
+}
+function mergeRemoteSession(cur){
+  var base={};try{base=JSON.parse(window._lastSynced||'{}');}catch(e){}
+  var bOv=base.ov||{},bTs=base.ts||{},bFp=base.fp||{},changed=false;
+  function same(a,b){return JSON.stringify(a)===JSON.stringify(b);}
+  Object.keys(cur.overrides||{}).forEach(function(k){
+    if(same(txOverrides[k],bOv[k])&&!same(txOverrides[k],cur.overrides[k])){txOverrides[k]=cur.overrides[k];changed=true;}
+  });
+  Object.keys(cur.transfer_state||{}).forEach(function(k){
+    if(same(transferState[k],bTs[k])&&!same(transferState[k],cur.transfer_state[k])){transferState[String(k)]=cur.transfer_state[k];changed=true;}
+  });
+  Object.keys(cur.fixed_paid||{}).forEach(function(k){
+    var lv=(window._fixedPaid||{})[k];
+    if(same(lv,bFp[k])&&!same(lv,cur.fixed_paid[k])){window._fixedPaid=window._fixedPaid||{};window._fixedPaid[k]=cur.fixed_paid[k];changed=true;}
+  });
+  return changed;
+}
 // Switching months resets all per-month state so nothing bleeds between
 // months (overrides can't collide, but manual expenses and paid/pending
 // flags would otherwise carry over and get saved into the wrong month).
@@ -785,6 +816,7 @@ async function autoResume(){
     applySavedState(session,loadLocalState(session.month_key));
     window._cloudUpdatedAt=session.updated_at||null;
     window._sessionStatus=session.status||'in_progress';
+    window._lastSynced=snapshotSyncState();
     lastReport=buildFromRows(cloudRowsToRaw(txRows));
     render(lastReport);
     showReportButtons();
@@ -808,13 +840,18 @@ async function runCloudSave(){
   try{
     var monthKey=getMonthKey(lastReport.d1);
     var cur=await sbLoadSession(monthKey);
-    if(cur&&cur.updated_at&&window._cloudUpdatedAt&&cur.updated_at!==window._cloudUpdatedAt){
-      // The other person saved since we last synced — merge their state first
-      applySavedState(cur,null);
-      _applyingRemote=true;
-      lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions);
-      render(lastReport);
-      _applyingRemote=false;
+    if(cur&&cur.updated_at&&tsNewer(cur.updated_at,window._cloudUpdatedAt)){
+      // The other person saved since we last synced. Merge only the keys the
+      // user has NOT touched here since the last sync, and re-render only if
+      // that actually changed something - a background rebuild resets every
+      // dropdown and collapses open drill-downs under the user's hands.
+      if(mergeRemoteSession(cur)){
+        _applyingRemote=true;
+        lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions);
+        render(lastReport);
+        _applyingRemote=false;
+      }
+      window._cloudUpdatedAt=cur.updated_at;
     }
     await sbSaveSession(lastReport.d1,lastReport,lastReport.baseTransactions);
   }catch(e){
@@ -841,6 +878,7 @@ runBtn.addEventListener('click',function(){
       applySavedState(sbSession,loadLocalState(monthKey));
       window._cloudUpdatedAt=(sbSession&&sbSession.updated_at)||null;
       window._sessionStatus=(sbSession&&sbSession.status)||'in_progress';
+      window._lastSynced=snapshotSyncState();
       if(sbSession)setSaveStatus('Resumed '+monthLabel+(window._sessionStatus==='closed'?' (closed month — saving keeps it closed)':''));
 
       // Union this CSV with the cloud-stored rows for the month, so a partial
