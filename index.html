@@ -666,16 +666,17 @@ async function sbSaveSession(d1,report,baseTransactions){
     }:null,
     days_elapsed:report.daysElapsed,
     days_in_month:report.daysInMonth,
-    status:'in_progress',
     updated_at:new Date().toISOString()
   };
+  // No status in the PATCH: saving must never reopen a closed month.
+  // Only a brand-new row (POST) starts as in_progress.
   async function _doSessionWrite(body){
     var pr=await fetch(SB_URL+'/rest/v1/monthly_sessions?month_key=eq.'+monthKey,{method:'PATCH',headers:Object.assign({},simpleHdrs,{'Prefer':'return=representation'}),body:JSON.stringify(body)});
     var pd=pr.ok?await pr.json():null;
     if(pd&&Array.isArray(pd)&&pd.length>0)return{ok:true,resp:pr};
     if(!pr.ok)return{ok:false,resp:pr};
-    var por=await fetch(SB_URL+'/rest/v1/monthly_sessions',{method:'POST',headers:simpleHdrs,body:JSON.stringify(body)});
-    return{ok:por.ok,resp:por};
+    var por=await fetch(SB_URL+'/rest/v1/monthly_sessions',{method:'POST',headers:simpleHdrs,body:JSON.stringify(Object.assign({},body,{status:'in_progress'}))});
+    return{ok:por.ok,resp:por,created:por.ok};
   }
   // PostgREST rejects the whole row if any payload key has no matching column
   // (PGRST204). Drop the named column and retry so schema drift degrades a
@@ -692,6 +693,7 @@ async function sbSaveSession(d1,report,baseTransactions){
     body=Object.assign({},body);delete body[col];
   }
   if(!sessResult.ok)throw new Error('Session save failed ('+sessResult.resp.status+'): '+sessErrText);
+  if(sessResult.created)window._sessionStatus='in_progress';
   window._cloudUpdatedAt=session.updated_at;
   if(txError){
     setSaveStatus('Session saved, but transactions failed — '+txError,true);
@@ -701,29 +703,6 @@ async function sbSaveSession(d1,report,baseTransactions){
   }else{
     setSaveStatus('Saved to cloud');
   }
-}
-
-async function sbMergeAndLoad(d1){
-  var monthKey=getMonthKey(d1);
-  console.log('[SB] Loading session for', monthKey);
-  var session=await sbLoadSession(monthKey);
-  if(!session){console.log('[SB] No session found');return false;}
-  console.log('[SB] Session found:', session.month_label);
-  console.log('[SB] Saved overrides:', JSON.stringify(session.overrides));
-  console.log('[SB] Saved transfer_state:', JSON.stringify(session.transfer_state));
-  // Restore overrides and state
-  if(session.overrides)Object.assign(txOverrides,session.overrides);
-  if(session.transfer_state){
-    var ts=session.transfer_state;
-    Object.keys(ts).forEach(function(k){transferState[String(k)]=ts[k];});
-  }
-  if(session.fixed_paid)window._fixedPaid=session.fixed_paid;
-  if(session.categories&&session.categories.length)CATEGORIES=migrateCategories(session.categories);
-  if(session.manual_expenses&&session.manual_expenses.length)manualExpenses=session.manual_expenses;
-  console.log('[SB] Restored txOverrides:', JSON.stringify(txOverrides));
-  console.log('[SB] Restored transferState:', JSON.stringify(transferState));
-  setSaveStatus('Resumed '+session.month_label);
-  return true;
 }
 
 var saveStatusTimer=null;
@@ -737,16 +716,20 @@ function setSaveStatus(msg,isError){
   saveStatusTimer=setTimeout(function(){el.style.opacity='0';},isError?15000:3000);
 }
 
+// Toggles between closed and in_progress — the only way a month reopens.
 async function saveAndCloseMonth(){
   if(!lastReport)return;
   var monthKey=getMonthKey(lastReport.d1);
+  var toClosed=window._sessionStatus!=='closed';
   var resp=await fetch(SB_URL+'/rest/v1/monthly_sessions?month_key=eq.'+monthKey,{
     method:'PATCH',
     headers:await sbHeaders(),
-    body:JSON.stringify({status:'closed',updated_at:new Date().toISOString()})
+    body:JSON.stringify({status:toClosed?'closed':'in_progress',updated_at:new Date().toISOString()})
   });
-  if(!resp.ok){var err=await resp.text();setSaveStatus('Close failed ('+resp.status+'): '+err,true);return;}
-  setSaveStatus('Month closed and saved');
+  if(!resp.ok){var err=await resp.text();setSaveStatus((toClosed?'Close':'Reopen')+' failed ('+resp.status+'): '+err,true);return;}
+  window._sessionStatus=toClosed?'closed':'in_progress';
+  showReportButtons();
+  setSaveStatus(toClosed?'Month closed and saved':'Month reopened');
 }
 
 // ── Collaboration: cloud is the source of truth ─────────────────────────
@@ -767,10 +750,22 @@ function applySavedState(cloud,local){
 function loadLocalState(monthKey){
   try{return JSON.parse(localStorage.getItem('mm_session_'+monthKey));}catch(e){return null;}
 }
+// Switching months resets all per-month state so nothing bleeds between
+// months (overrides can't collide, but manual expenses and paid/pending
+// flags would otherwise carry over and get saved into the wrong month).
+function resetMonthState(monthKey){
+  if(window._activeMonthKey===monthKey)return;
+  txOverrides={};transferState={};manualExpenses=[];window._fixedPaid={};
+  undoStack=[];
+  window._cloudUpdatedAt=null;
+  window._sessionStatus='in_progress';
+  window._activeMonthKey=monthKey;
+}
 function showReportButtons(){
   document.getElementById('printBtn').style.display='';
   document.getElementById('saveMonthBtn').style.display='';
   document.getElementById('saveHistoryBtn').style.display='';
+  document.getElementById('saveMonthBtn').textContent=window._sessionStatus==='closed'?'Reopen month':'Close month';
 }
 
 // Sign-in lands directly in the shared working month: latest in-progress
@@ -786,8 +781,10 @@ async function autoResume(){
     var txRows=await sbLoadMonthRows(session.month_key);
     if(!txRows.length)return;
     setSaveStatus('Resuming '+session.month_label+'…');
+    resetMonthState(session.month_key);
     applySavedState(session,loadLocalState(session.month_key));
     window._cloudUpdatedAt=session.updated_at||null;
+    window._sessionStatus=session.status||'in_progress';
     lastReport=buildFromRows(cloudRowsToRaw(txRows));
     render(lastReport);
     showReportButtons();
@@ -840,9 +837,11 @@ runBtn.addEventListener('click',function(){
 
       setSaveStatus('Loading shared session…');
       var sbSession=await sbLoadSession(monthKey);
+      resetMonthState(monthKey);
       applySavedState(sbSession,loadLocalState(monthKey));
       window._cloudUpdatedAt=(sbSession&&sbSession.updated_at)||null;
-      if(sbSession)setSaveStatus('Resumed '+monthLabel);
+      window._sessionStatus=(sbSession&&sbSession.status)||'in_progress';
+      if(sbSession)setSaveStatus('Resumed '+monthLabel+(window._sessionStatus==='closed'?' (closed month — saving keeps it closed)':''));
 
       // Union this CSV with the cloud-stored rows for the month, so a partial
       // export adds new transactions without dropping already-stored ones.

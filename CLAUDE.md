@@ -45,6 +45,12 @@ Two people share the data. Cloud (Supabase) is the source of truth:
 - `sbSaveSession` unions its transaction rows with the cloud's before the
   DELETE+INSERT — transaction writes are add-only by design; only history's
   delete-month removes rows.
+- Saves never touch `status` (PATCH omits it; only a new row POSTs
+  in_progress), so re-analyzing a closed month keeps it closed — the
+  Close/Reopen month button is the only status toggle. `resetMonthState()`
+  clears per-month globals (overrides, transfers, manual expenses,
+  fixed-paid, undo stack) on every month switch so state never bleeds
+  between months.
 - The GitHub rules token is shared through the `app_config` table.
 
 `planner.html` is the shared weekly kindergarten planner: one
