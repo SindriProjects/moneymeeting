@@ -524,6 +524,11 @@
       "m": "contains",
       "v": "ica nara affarn",
       "cat": "Groceries"
+    },
+    {
+      "m": "contains",
+      "v": "spar tjøme",
+      "cat": "Groceries"
     }
   ],
   "categories": [
