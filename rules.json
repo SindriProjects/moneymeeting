@@ -509,6 +509,11 @@
       "m": "contains",
       "v": "klarna:mango",
       "cat": "Barneutgifter"
+    },
+    {
+      "m": "contains",
+      "v": "clas ohlson",
+      "cat": "Huskostnader"
     }
   ],
   "categories": [
