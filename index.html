@@ -228,7 +228,7 @@ tr:last-child td{border-bottom:none;}
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <a href="history.html" class="btn no-print" style="text-decoration:none">View history</a>
       <span id="saveStatus" style="font-size:12px;color:var(--text3);transition:opacity 0.5s;opacity:0;"></span>
-      <button class="btn no-print" id="saveHistoryBtn" style="display:none" onclick="saveToHistory()">Save to history</button>
+      <button class="btn no-print" id="saveHistoryBtn" style="display:none" onclick="saveToHistory()">Sync now</button>
       <button class="btn no-print" id="saveMonthBtn" style="display:none" onclick="saveAndCloseMonth()">Close month</button>
       <button class="btn btn-green no-print" id="printBtn" style="display:none" onclick="window.print()">Print / Save PDF</button>
       <button class="btn no-print" id="logoutBtn" onclick="doSignOut()" style="display:none;">Sign out</button>
@@ -297,7 +297,18 @@ async function doAuth(){
   document.getElementById('authSubmit').disabled=false;
   document.getElementById('authSubmit').textContent='Sign in';
   if(result.error){errEl.textContent=result.error.message;return;}
-  if(result.data&&result.data.session)showApp();
+  if(result.data&&result.data.session){showApp();bootstrapAfterAuth();}
+}
+async function bootstrapAfterAuth(){
+  // Shared GitHub token (app_config) so no device ever types it again
+  var stored=localStorage.getItem('gh_token');
+  if(!stored){stored=await sbGetConfig('gh_token');if(stored)localStorage.setItem('gh_token',stored);}
+  if(stored&&!ghConnected){
+    ghToken=stored;
+    await ghLoad();
+    if(ghConnected)document.querySelector('.gh-bar').style.display='none';
+  }
+  autoResume();
 }
 async function doSignOut(){
   await _supabase.auth.signOut();
@@ -497,14 +508,7 @@ async function connectGitHub(){
 }
 window.addEventListener('load',async function(){
   var s=await _supabase.auth.getSession();
-  if(s.data.session){showApp();}else{showAuthScreen();}
-  var stored=localStorage.getItem('gh_token');
-  if(!stored){stored=await sbGetConfig('gh_token');if(stored)localStorage.setItem('gh_token',stored);}
-  if(stored){
-    ghToken=stored;
-    await ghLoad();
-    if(ghConnected)document.querySelector('.gh-bar').style.display='none';
-  }
+  if(s.data.session){showApp();bootstrapAfterAuth();}else{showAuthScreen();}
 });
 
 function getRules(){return CUSTOM_RULES.concat(BASE_RULES);}
@@ -621,6 +625,13 @@ async function sbSaveSession(d1,report,baseTransactions){
   // Save transactions: delete existing rows for the month then re-insert (avoids upsert/unique-constraint issues)
   var hdrs=await sbHeaders();
   var simpleHdrs={'apikey':hdrs['apikey'],'Authorization':hdrs['Authorization'],'Content-Type':'application/json'};
+  // Union with rows already in the cloud so a device holding a partial CSV can
+  // never erase transactions another device stored (writes are add-only).
+  var existing=await sbLoadMonthRows(monthKey);
+  var have={};txs.forEach(function(t){have[t.uid]=true;});
+  existing.forEach(function(t){
+    if(!have[t.uid]){have[t.uid]=true;txs.push({month_key:monthKey,uid:t.uid,date:t.date,description:t.description,amount:t.amount,category:t.category,is_income:t.is_income,ut:t.ut||0,inn:t.inn||0});}
+  });
   var txError=null;
   var delResp=await fetch(SB_URL+'/rest/v1/monthly_transactions?month_key=eq.'+monthKey,{method:'DELETE',headers:simpleHdrs});
   if(!delResp.ok){var delErr=await delResp.text();txError='delete '+delResp.status+': '+delErr;console.warn('[SB] Transaction delete failed:',txError);}
@@ -680,6 +691,7 @@ async function sbSaveSession(d1,report,baseTransactions){
     body=Object.assign({},body);delete body[col];
   }
   if(!sessResult.ok)throw new Error('Session save failed ('+sessResult.resp.status+'): '+sessErrText);
+  window._cloudUpdatedAt=session.updated_at;
   if(txError){
     setSaveStatus('Session saved, but transactions failed — '+txError,true);
   }else if(droppedCols.length){
@@ -736,60 +748,110 @@ async function saveAndCloseMonth(){
   setSaveStatus('Month closed and saved');
 }
 
+// ── Collaboration: cloud is the source of truth ─────────────────────────
+// Cloud state wins per key; local-only keys survive (offline work not yet synced).
+function applySavedState(cloud,local){
+  cloud=cloud||{};local=local||{};
+  var ov=Object.assign({},local.overrides||{},cloud.overrides||{});
+  Object.keys(ov).forEach(function(k){txOverrides[k]=ov[k];});
+  var ts=Object.assign({},local.transferState||{},cloud.transfer_state||cloud.transferState||{});
+  Object.keys(ts).forEach(function(k){transferState[String(k)]=ts[k];});
+  var fp=Object.assign({},local.fixedPaid||{},cloud.fixed_paid||cloud.fixedPaid||{});
+  if(Object.keys(fp).length)window._fixedPaid=fp;
+  var cats=(cloud.categories&&cloud.categories.length)?cloud.categories:(local.categories||[]);
+  if(cats.length)CATEGORIES=migrateCategories(cats);
+  var man=(cloud.manual_expenses&&cloud.manual_expenses.length)?cloud.manual_expenses:(local.manualExpenses||[]);
+  if(man.length)manualExpenses=man;
+}
+function loadLocalState(monthKey){
+  try{return JSON.parse(localStorage.getItem('mm_session_'+monthKey));}catch(e){return null;}
+}
+function showReportButtons(){
+  document.getElementById('printBtn').style.display='';
+  document.getElementById('saveMonthBtn').style.display='';
+  document.getElementById('saveHistoryBtn').style.display='';
+}
+
+// Sign-in lands directly in the shared working month: latest in-progress
+// session, rebuilt from the cloud-stored transactions. No CSV needed.
+async function autoResume(){
+  if(lastReport)return;
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/monthly_sessions?status=eq.in_progress&select=*&order=month_key.desc&limit=1',{headers:await sbHeaders()});
+    if(!r.ok)return;
+    var rows=await r.json();
+    if(!rows.length)return;
+    var session=rows[0];
+    var txRows=await sbLoadMonthRows(session.month_key);
+    if(!txRows.length)return;
+    setSaveStatus('Resuming '+session.month_label+'…');
+    applySavedState(session,loadLocalState(session.month_key));
+    window._cloudUpdatedAt=session.updated_at||null;
+    lastReport=buildFromRows(cloudRowsToRaw(txRows));
+    render(lastReport);
+    showReportButtons();
+    document.getElementById('dz').classList.add('compact');
+    document.getElementById('badge').innerHTML='<div class="file-badge"><span>Synced from cloud · '+session.month_label+'</span></div>';
+    setSaveStatus('Resumed '+session.month_label+' from cloud');
+  }catch(e){console.warn('[SB] Auto-resume failed',e);}
+}
+
+// Debounced auto-save: every classification syncs to Supabase ~2.5s after the
+// last change, after folding in anything the other person saved meanwhile.
+var _autoSaveTimer=null,_autoSaveInFlight=false,_autoSaveQueued=false,_applyingRemote=false;
+function scheduleCloudSave(){
+  if(_autoSaveTimer)clearTimeout(_autoSaveTimer);
+  _autoSaveTimer=setTimeout(runCloudSave,2500);
+}
+async function runCloudSave(){
+  if(!lastReport)return;
+  if(_autoSaveInFlight){_autoSaveQueued=true;return;}
+  _autoSaveInFlight=true;
+  try{
+    var monthKey=getMonthKey(lastReport.d1);
+    var cur=await sbLoadSession(monthKey);
+    if(cur&&cur.updated_at&&window._cloudUpdatedAt&&cur.updated_at!==window._cloudUpdatedAt){
+      // The other person saved since we last synced — merge their state first
+      applySavedState(cur,null);
+      _applyingRemote=true;
+      lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions);
+      render(lastReport);
+      _applyingRemote=false;
+    }
+    await sbSaveSession(lastReport.d1,lastReport,lastReport.baseTransactions);
+  }catch(e){
+    setSaveStatus('Auto-save failed — '+(e&&e.message?e.message:e),true);
+  }
+  _autoSaveInFlight=false;
+  if(_autoSaveQueued){_autoSaveQueued=false;scheduleCloudSave();}
+}
+
 runBtn.addEventListener('click',function(){
   document.getElementById('err').innerHTML='';
   (async function(){
     try{
-      // 1. Analyze CSV to get month key
-      var report=analyze(csvText);
-      var monthKey=getMonthKey(report.d1);
-      var monthLabel=report.d1.toLocaleString('en-GB',{month:'long',year:'numeric'});
+      var csvRows=parseCsvRows(csvText);
+      if(!csvRows.length)throw new Error('No transactions found in file');
+      var dates=csvRows.map(function(r){return r.date;}).filter(Boolean).sort();
+      var d1=new Date(dates[0]);
+      var monthKey=getMonthKey(d1);
+      var monthLabel=d1.toLocaleString('en-GB',{month:'long',year:'numeric'});
 
-      // 2. Try localStorage first (instant), then Supabase (shared across devices)
-      var lsKey='mm_session_'+monthKey;
-      var saved=null;
-      try{ saved=JSON.parse(localStorage.getItem(lsKey)); }catch(e){}
+      setSaveStatus('Loading shared session…');
+      var sbSession=await sbLoadSession(monthKey);
+      applySavedState(sbSession,loadLocalState(monthKey));
+      window._cloudUpdatedAt=(sbSession&&sbSession.updated_at)||null;
+      if(sbSession)setSaveStatus('Resumed '+monthLabel);
 
-      if(!saved){
-        // Not in localStorage — try Supabase (cross-device)
-        setSaveStatus('Loading shared session...');
-        var sbSession=await sbLoadSession(monthKey);
-        if(sbSession){
-          saved={
-            overrides: sbSession.overrides||{},
-            transferState: sbSession.transfer_state||{},
-            fixedPaid: sbSession.fixed_paid||{},
-            categories: sbSession.categories||[],
-            manualExpenses: sbSession.manual_expenses||[]
-          };
-          console.log('[SB] Loaded from Supabase, overrides:', Object.keys(saved.overrides).length);
-        }
-      } else {
-        console.log('[LS] Loaded from localStorage, overrides:', Object.keys(saved.overrides||{}).length);
-      }
+      // Union this CSV with the cloud-stored rows for the month, so a partial
+      // export adds new transactions without dropping already-stored ones.
+      var cloudRaw=cloudRowsToRaw(await sbLoadMonthRows(monthKey));
+      var seen={},union=[];
+      csvRows.concat(cloudRaw).forEach(function(row){var k=uid(row);if(!seen[k]){seen[k]=true;union.push(row);}});
 
-      if(saved && (Object.keys(saved.overrides||{}).length || Object.keys(saved.transferState||{}).length)){
-        // Restore all saved state before buildReport runs
-        if(saved.overrides) Object.keys(saved.overrides).forEach(function(k){txOverrides[k]=saved.overrides[k];});
-        if(saved.transferState) Object.keys(saved.transferState).forEach(function(k){transferState[k]=saved.transferState[k];});
-        if(saved.fixedPaid) window._fixedPaid=saved.fixedPaid;
-        if(saved.categories&&saved.categories.length){
-        CATEGORIES=migrateCategories(saved.categories);
-      }
-        if(saved.manualExpenses&&saved.manualExpenses.length) manualExpenses=saved.manualExpenses;
-        setSaveStatus('Resumed '+monthLabel);
-      } else {
-        console.log('[SB] No session found, starting fresh');
-      }
-
-      // 3. Re-analyze with restored state — new transactions init, existing keep state
-      var report2=analyze(csvText);
-      lastReport=buildReport(report2.allInternals,report2.baseTransactions);
+      lastReport=buildFromRows(union);
       render(lastReport);
-      document.getElementById('printBtn').style.display='';
-      document.getElementById('saveMonthBtn').style.display='';
-      document.getElementById('saveHistoryBtn').style.display='';
-
+      showReportButtons();
     } catch(e){
       console.error('Run error:', e);
       document.getElementById('err').innerHTML='<div class="err-box">Error: '+e.message+'</div>';
@@ -821,25 +883,31 @@ async function saveToHistory(){
   btn.disabled=true; btn.textContent='Saving...';
   try{
     await sbSaveSession(lastReport.d1, lastReport, lastReport.baseTransactions);
-    btn.textContent='Saved!';
-    setTimeout(function(){btn.disabled=false;btn.textContent='Save to history';},2000);
+    btn.textContent='Synced!';
+    setTimeout(function(){btn.disabled=false;btn.textContent='Sync now';},2000);
   }catch(e){
-    btn.disabled=false; btn.textContent='Save to history';
+    btn.disabled=false; btn.textContent='Sync now';
     setSaveStatus('Save failed — '+(e&&e.message?e.message:e),true);
   }
 }
 
 
 function uid(t){return t.date+'|'+t.desc+'|'+t.ut+'|'+t.inn;}
-function analyze(raw){
+function parseCsvRows(raw){
   var text=raw.replace(/^\uFEFF/,'');
   var lines=text.split(/\r?\n/).filter(function(l){return l.trim();});
-  var allInternals=[],baseTransactions=[],seen={};
+  var rows=[];
   for(var i=1;i<lines.length;i++){
     var cols=lines[i].split(';');if(cols.length<5)continue;
-    var row={date:cols[0].trim(),desc:cols[2].trim(),ut:parseNOK(cols[3]),inn:parseNOK(cols[4])};
-    var k=uid(row);if(seen[k])continue;seen[k]=true;
-    if(isInternal(row)){allInternals.push(row);continue;}
+    rows.push({date:cols[0].trim(),desc:cols[2].trim(),ut:parseNOK(cols[3]),inn:parseNOK(cols[4])});
+  }
+  return rows;
+}
+function buildFromRows(rows){
+  var allInternals=[],baseTransactions=[],seen={};
+  rows.forEach(function(row){
+    var k=uid(row);if(seen[k])return;seen[k]=true;
+    if(isInternal(row)){allInternals.push(row);return;}
     var cat=classify(row.desc);
     if(['INCOME_NAV','INCOME_SALARY','INCOME_PROJECT'].indexOf(cat)>=0&&row.inn>0)
       baseTransactions.push(Object.assign({},row,{cat:cat,isIncome:true,amount:row.inn}));
@@ -847,9 +915,22 @@ function analyze(raw){
       baseTransactions.push(Object.assign({},row,{cat:'Refund',isIncome:true,amount:row.inn}));
     else if(row.ut>0)
       baseTransactions.push(Object.assign({},row,{cat:cat,isIncome:false,amount:row.ut}));
-  }
+  });
   allInternals.forEach(function(t){if(transferState[uid(t)]===undefined)transferState[uid(t)]='excluded';});
   return buildReport(allInternals,baseTransactions);
+}
+function analyze(raw){return buildFromRows(parseCsvRows(raw));}
+// Stored monthly_transactions rows carry the raw fields (date/description/ut/inn),
+// so a month can be rebuilt from the cloud exactly as from a CSV.
+function cloudRowsToRaw(txRows){
+  return (txRows||[]).map(function(t){return{date:t.date,desc:t.description,ut:t.ut||0,inn:t.inn||0};});
+}
+async function sbLoadMonthRows(monthKey){
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/monthly_transactions?month_key=eq.'+monthKey+'&select=*&order=date.asc',{headers:await sbHeaders()});
+    if(!r.ok)return[];
+    return await r.json();
+  }catch(e){console.warn('[SB] Month rows load failed',e);return[];}
 }
 function buildReport(allInternals,baseTransactions){
   var extraIncome=allInternals.filter(function(t){return transferState[uid(t)]==='income';}).map(function(t){return Object.assign({},t,{cat:'INCOME_TRANSFER',isIncome:true,amount:t.inn||t.ut});});
@@ -1432,10 +1513,11 @@ function render(d){
       deleteCustomRule(parseInt(el.getAttribute('data-rule-idx')));
     });
   });
-  // auto-save to Supabase on each render (debounced)
+  // Every state change re-renders, so this is the sync point: cache locally
+  // and schedule a debounced cloud save (skipped while applying remote state).
   if(lastReport){
-    // Save to localStorage + Supabase on every render
     saveToLocalStorage();
+    if(!_applyingRemote)scheduleCloudSave();
   }
 }
 

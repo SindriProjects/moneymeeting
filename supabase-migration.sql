@@ -9,6 +9,15 @@ alter table monthly_sessions add column if not exists projection    jsonb;
 alter table monthly_sessions add column if not exists days_elapsed  integer;
 alter table monthly_sessions add column if not exists days_in_month integer;
 
+-- Shared per-household config (e.g. the GitHub rules token), so the second
+-- device never has to type it. Needed for collaborative mode.
+create table if not exists app_config (key text primary key, value text);
+alter table app_config enable row level security;
+do $$ begin
+  create policy "authenticated full access" on app_config
+    for all to authenticated using (true) with check (true);
+exception when duplicate_object then null; end $$;
+
 -- ── Verify row-level security lets signed-in users write ────────────────────
 -- If saves fail with "row-level security policy" errors, inspect policies:
 --   select * from pg_policies where tablename in ('monthly_sessions','monthly_transactions');

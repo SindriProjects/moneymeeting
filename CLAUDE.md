@@ -30,6 +30,23 @@ Never force-push: you could erase a rules sync the app just wrote.
   `document.documentElement.scrollWidth <= innerWidth` at 390px for mobile
   regressions.
 
+## Collaboration model
+
+Two people share the data. Cloud (Supabase) is the source of truth:
+
+- Sign-in auto-resumes the latest `in_progress` month from cloud-stored
+  `monthly_transactions` (rebuilt through the same pipeline as a CSV, via
+  `buildFromRows`) — no CSV upload needed on the second device.
+- Running a CSV unions its rows with the cloud rows for that month by `uid`,
+  so partial exports only ever add transactions.
+- Every state change auto-saves (debounced ~2.5s, `scheduleCloudSave` hooked
+  into `render()`); before writing, a newer cloud `updated_at` triggers a
+  merge of the partner's state (cloud wins per key, local-only keys survive).
+- `sbSaveSession` unions its transaction rows with the cloud's before the
+  DELETE+INSERT — transaction writes are add-only by design; only history's
+  delete-month removes rows.
+- The GitHub rules token is shared through the `app_config` table.
+
 ## Gotchas
 
 - `monthly_sessions` rejects unknown payload columns (PostgREST 400 PGRST204);
