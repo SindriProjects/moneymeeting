@@ -1262,6 +1262,15 @@ function removeManualExpense(eid){
   pushUndo('Removed: '+entry.desc,function(){manualExpenses.push(entry);lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions);render(lastReport);});
   lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions);render(lastReport);
 }
+// Clears a hide/reclassify override on a manual expense so it re-enters the report
+function restoreManualExpense(eid){
+  var entry=manualExpenses.find(function(e){return e.uid===eid;});
+  if(!entry)return;
+  var k=uid(entry),prev=txOverrides[k]?Object.assign({},txOverrides[k]):null;
+  delete txOverrides[k];
+  pushUndo('Restored: '+entry.desc,function(){if(prev)txOverrides[k]=prev;else delete txOverrides[k];lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions);render(lastReport);});
+  lastReport=buildReport(lastReport.allInternals,lastReport.baseTransactions);render(lastReport);
+}
 
 function render(d){
   _txRegistry={};
@@ -1419,7 +1428,9 @@ function render(d){
   if(manualExpenses.length>0){
     var _manBody='<div class="table-wrap"><table><tr><th>Date</th><th>Description</th><th>Category</th><th class="tr">Amount</th></tr>';
     manualExpenses.forEach(function(e){
-      _manBody+='<tr><td style="font-family:monospace;font-size:11px;color:var(--text3)">'+e.date+'</td><td>'+e.desc+'</td><td class="muted">'+e.cat+'</td><td class="tr">'+fmt(e.amount)+'</td></tr>';
+      var _mov=txOverrides[uid(e)];
+      var _mhid=_mov&&_mov.omit;
+      _manBody+='<tr'+(_mhid?' style="opacity:.55"':'')+'><td style="font-family:monospace;font-size:11px;color:var(--text3)">'+e.date+'</td><td>'+e.desc+(_mhid?' <span class="pill pill-amb">hidden</span>':'')+'</td><td class="muted">'+migrateCatName(_mov&&_mov.cat?_mov.cat:e.cat)+'</td><td class="tr">'+fmt(e.amount)+'</td></tr>';
     });
     _manBody+='<tr><td colspan="3" class="bold">Total</td><td class="tr bold">'+fmt(manualExpenses.reduce(function(s,e){return s+e.amount;},0))+'</td></tr>';
     _manBody+='</table></div>';
@@ -1498,7 +1509,9 @@ function render(d){
   if(manualExpenses.length>0){
     h+='<div class="table-wrap" style="margin-bottom:12px"><table><tr><th>Date</th><th>Description</th><th>Category</th><th class="tr">Amount</th><th></th></tr>';
     manualExpenses.forEach(function(e){
-      _manBody+='<tr><td style="font-family:monospace;font-size:11px;color:var(--text3)">'+e.date+'</td><td>'+e.desc+'</td><td class="muted">'+e.cat+'</td><td class="tr bold">'+fmt(e.amount)+'</td><td style="text-align:right"><button class="reclass-btn omit" onclick="removeManualExpense(\''+e.uid+'\')">Remove</button></td></tr>';
+      var _fov=txOverrides[uid(e)];
+      var _fhid=_fov&&_fov.omit;
+      h+='<tr'+(_fhid?' style="opacity:.55"':'')+'><td style="font-family:monospace;font-size:11px;color:var(--text3)">'+e.date+'</td><td>'+e.desc+(_fhid?' <span class="pill pill-amb">hidden</span>':'')+'</td><td class="muted">'+migrateCatName(_fov&&_fov.cat?_fov.cat:e.cat)+'</td><td class="tr bold">'+fmt(e.amount)+'</td><td style="text-align:right;white-space:nowrap">'+(_fhid?'<button class="reclass-btn" onclick="restoreManualExpense(\''+e.uid+'\')">Restore</button>':'')+'<button class="reclass-btn omit" onclick="removeManualExpense(\''+e.uid+'\')">Remove</button></td></tr>';
     });
     h+='<tr><td colspan="3" class="bold">Total</td><td class="tr bold">'+fmt(manualExpenses.reduce(function(s,e){return s+e.amount;},0))+'</td><td></td></tr>';
     h+='</table></div>';
