@@ -226,6 +226,7 @@ tr:last-child td{border-bottom:none;}
       <div class="header-sub">Upload your monthly bank export to generate a structured report</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <a href="planner.html" class="btn no-print" style="text-decoration:none">Planner</a>
       <a href="history.html" class="btn no-print" style="text-decoration:none">View history</a>
       <span id="saveStatus" style="font-size:12px;color:var(--text3);transition:opacity 0.5s;opacity:0;"></span>
       <button class="btn no-print" id="saveHistoryBtn" style="display:none" onclick="saveToHistory()">Sync now</button>
@@ -947,8 +948,12 @@ function buildReport(allInternals,baseTransactions){
       expenses.push(Object.assign({},t,{cat:migrateCatName(ov?ov.cat:t.cat)}));
     }
   });
-  // Add manual expenses
-  manualExpenses.forEach(function(m){expenses.push(Object.assign({},m,{isIncome:false,isManual:true}));});
+  // Add manual expenses — honoring reclassify/omit overrides like any other tx
+  manualExpenses.forEach(function(m){
+    var ov=txOverrides[uid(m)];
+    if(ov&&ov.omit)return;
+    expenses.push(Object.assign({},m,{isIncome:false,isManual:true,cat:migrateCatName(ov&&ov.cat?ov.cat:m.cat)}));
+  });
   var byCategory={};
   expenses.forEach(function(t){if(!byCategory[t.cat])byCategory[t.cat]=[];byCategory[t.cat].push(t);});
   var dates=baseTransactions.concat(allInternals).map(function(r){return r.date;}).filter(Boolean).sort();
