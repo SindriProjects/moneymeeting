@@ -519,6 +519,11 @@
       "m": "contains",
       "v": "pelle p",
       "cat": "Barneutgifter"
+    },
+    {
+      "m": "contains",
+      "v": "ica nara affarn",
+      "cat": "Groceries"
     }
   ],
   "categories": [
